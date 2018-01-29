@@ -29,31 +29,6 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
     configurable: true
 });
 
-Game_Map._tileFlagTypes = {}
-
-let _tileFlagIndex = 1;
-
-Game_Map.addFlag = function(...flagIds) {
-    flagIds.forEach(flagId => {
-        Game_Map._tileFlagTypes[flagId] = _tileFlagIndex++;
-    })
-}
-
-Game_Map.getFlag = function(flagId) {
-    return Game_Map._tileFlagTypes[flagId];
-}
-
-Game_Map.getFlagLocation = function(flagId) {
-    let flag = Game_Map._tileFlagTypes[flagId]
-    let bit = (1 << (flag % 16)) & 0xffff;
-    let group = Math.floor(flag / 16);
-    return [group, bit];
-}
-
-Game_Map.addFlag('boat', 'ship', 'airship')
-Game_Map.addFlag('ladder', 'bush', 'counter', 'damage')
-Game_Map.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp')
-
 let _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
     _setup.call(this, mapId);
@@ -594,6 +569,7 @@ Game_Map.prototype._setupTiledEvents = function () {
                 y += 1;
             }
             event.locate(x, y);
+			event._tiledProperties = object.properties;
         }
     }
 };
@@ -859,7 +835,7 @@ Game_Map.prototype.isBoatPassable = function(x, y, render = false, level = false
     if(level === false) {
         level = 0;
     }
-    return this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.boat, render, level);
+    return this.checkHasTileFlag(x, y, 'boat', render, level);
 };
 
 Game_Map.prototype.renderIsBoatPassable = function(x, y, render = 'main', level = 0) {
@@ -877,7 +853,7 @@ Game_Map.prototype.isShipPassable = function(x, y, render = false, level = false
     if(level === false) {
         level = 0;
     }
-    return this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.ship, render);
+    return this.checkHasTileFlag(x, y, 'ship', render);
 };
 
 Game_Map.prototype.renderIsShipPassable = function(x, y, render = 'main', level = 0) {
@@ -895,7 +871,7 @@ Game_Map.prototype.isAirshipLandOk = function(x, y, render = false, level = fals
     if(level === false) {
         level = 0;
     }
-    return this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.airship, render) && this.checkPassage(x, y, 0x0f, render);
+    return this.checkHasTileFlag(x, y, 'airship', render) && this.checkPassage(x, y, 0x0f, render);
 };
 
 Game_Map.prototype.renderIsAirshipLandOk = function(x, y, render = 'main', level = 0) {
@@ -913,7 +889,7 @@ Game_Map.prototype.isLadder = function(x, y, render = false, level = false) {
     if(level === false) {
         level = 0;
     }
-    return this.isValid(x, y) && this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.ladder, render);
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'ladder', render);
 };
 
 Game_Map.prototype.renderIsLadder = function(x, y, render = 'main', level = 0) {
@@ -931,7 +907,7 @@ Game_Map.prototype.isBush = function(x, y, render = false, level = false) {
     if(level === false) {
         level = 0;
     }
-    return this.isValid(x, y) && this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.bush, render);
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'bush', render);
 };
 
 Game_Map.prototype.renderIsBush = function(x, y, render = 'main', level = 0) {
@@ -949,7 +925,7 @@ Game_Map.prototype.isCounter = function(x, y, render = false, level = false) {
     if(level === false) {
         level = 0;
     }
-    return this.isValid(x, y) && this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.counter, render);
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'counter', render);
 };
 
 Game_Map.prototype.renderIsCounter = function(x, y, render = 'main', level = 0) {
@@ -967,7 +943,7 @@ Game_Map.prototype.isDamageFloor = function(x, y, render = false, level = false)
     if(level === false) {
         level = 0;
     }
-    return this.isValid(x, y) && this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.damage, render);
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'damage', render);
 };
 
 Game_Map.prototype.renderIsDamageFloor = function(x, y, render = 'main', level = 0) {
@@ -981,7 +957,7 @@ Game_Map.prototype.isSlipperyFloor = function(x, y, render = false, level = fals
     if(level === false) {
         level = 0;
     }
-    return this.isValid(x, y) && this.checkHasTileFlag(x, y, Game_Map._tileFlagTypes.ice, render);
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'ice', render);
 };
 
 Game_Map.prototype.renderIsSlipperyFloor = function(x, y, render = 'main', level = 0) {
@@ -989,4 +965,46 @@ Game_Map.prototype.renderIsSlipperyFloor = function(x, y, render = 'main', level
         level = 0;
     }
     return this.isSlipperyFloor(x, y, render, level);
+}
+
+Game_Map.prototype.getLayerProperties = function(layer = -1, ignoreHidden = true) {
+	if(layer > -1) {
+		if(this.tiledData.layers[layer] && this.tiledData.layers[layer].properties) {
+			return Object.assign({}, this.tiledData.layers[layer].properties);
+		}
+		return {};
+	}
+	let layerProperties = {};
+	this.tiledData.layers.forEach((layerData, i) => {
+		if(layerData && layerData.properties) {
+            if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData, 'collisions')[1]) {
+                layerProperties[i] = Object.assign({}, layerData.properties);
+            }
+		}
+	});
+	return layerProperties;
+}
+
+Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden = true) {
+    let index = x + this.width() * y;
+    
+	if(layer > -1) {
+		if(this.tiledData.layers[layer]) {
+			let tileId = this.tiledData.layers[layer].data[x];
+			let tileset = this._getTileset(tileId);
+			if(tileset && tileset.tileproperties) {
+				return Object.assign({}, tileset.tileproperties[tileId - tileset.firstgid]);
+			}
+		}
+		return {};
+	}
+	let tileProperties = {};
+	this.tiledData.layers.forEach((layerData, i) => {
+		if(layerData && layerData.properties) {
+            if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData)[1]) {
+                tileProperties[i] = this.getTileProperties(x, y, i);
+            }
+		}
+	});
+	return tileProperties;
 }
