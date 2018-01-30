@@ -265,23 +265,23 @@ export class TiledTilemap extends ShaderTilemap {
         let uy = Math.floor(rId / tileCols) * h;
 
         if (this._isPriorityTile(layer.layerId)) {
-            let ooy = 0;
-            if(this.tiledData.layers[layer.layerId].properties.originOffsetY) {
-                ooy = this.tiledData.layers[layer.layerId].properties.originOffsetY || 0
+            let locationHeight = 0;
+            if(this.tiledData.layers[layer.layerId].properties.locationHeight) {
+                locationHeight+= this.tiledData.layers[layer.layerId].properties.locationHeight || 0
             }
             if(tileset.tileproperties &&
                 tileset.tileproperties[tileId - tileset.firstgid] &&
-                tileset.tileproperties[tileId - tileset.firstgid].originOffsetY) {
-                ooy = tileset.tileproperties[tileId - tileset.firstgid].originOffsetY || 0
+                tileset.tileproperties[tileId - tileset.firstgid].locationHeight) {
+                locationHeight+= tileset.tileproperties[tileId - tileset.firstgid].locationHeight || 0
             }
-            this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, ooy);
+            this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, locationHeight);
             return;
         }
 
         rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
     }
 
-    _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, ooy = 0) {
+    _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, locationHeight = 0) {
         let tileset = this.tiledData.tilesets[textureId];
         let w = tileset.tilewidth;
         let h = tileset.tileheight;
@@ -318,7 +318,7 @@ export class TiledTilemap extends ShaderTilemap {
         sprite.setFrame(ux, uy, w, h);
         sprite.priority = this._getPriority(layerId);
         sprite.z = sprite.zIndex = this._getZIndex(layerId);
-        sprite.origOffsetY = ooy;
+        sprite.locationHeight = locationHeight;
         sprite.show();
 
         this._priorityTilesCount += 1;
@@ -446,8 +446,8 @@ export class TiledTilemap extends ShaderTilemap {
     _compareChildOrder(a, b) {
         if ((a.z || 0) !== (b.z || 0)) {
             return (a.z || 0) - (b.z || 0);
-        } else if (((a.y || 0) + (a.origOffsetY || 0)) !== ((b.y || 0) + (b.origOffsetY || 0))) {
-            return ((a.y || 0) + (a.origOffsetY || 0)) - ((b.y || 0) + (b.origOffsetY || 0));
+        } else if (((a.y || 0) + (a.locationHeight || 0)) !== ((b.y || 0) + (b.locationHeight || 0))) {
+            return ((a.y || 0) + (a.locationHeight || 0)) - ((b.y || 0) + (b.locationHeight || 0));
         } else if ((a.priority || 0) !== (b.priority || 0)) {
             return (a.priority || 0) - (b.priority || 0);
         } else {

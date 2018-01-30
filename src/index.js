@@ -6,6 +6,7 @@ import { TiledTilemap } from "./TiledTilemap";
 import "./Game_Map";
 import "./Game_CharacterBase";
 import "./Game_Player";
+import "./Sprite_Character";
 import "./Spriteset_Map";
 
 /* INITIALIZES LISTENERS */

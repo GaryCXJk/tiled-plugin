@@ -879,14 +879,14 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var uy = Math.floor(rId / tileCols) * h;
 
             if (this._isPriorityTile(layer.layerId)) {
-                var ooy = 0;
-                if (this.tiledData.layers[layer.layerId].properties.originOffsetY) {
-                    ooy = this.tiledData.layers[layer.layerId].properties.originOffsetY || 0;
+                var locationHeight = 0;
+                if (this.tiledData.layers[layer.layerId].properties.locationHeight) {
+                    locationHeight += this.tiledData.layers[layer.layerId].properties.locationHeight || 0;
                 }
-                if (tileset.tileproperties && tileset.tileproperties[tileId - tileset.firstgid] && tileset.tileproperties[tileId - tileset.firstgid].originOffsetY) {
-                    ooy = tileset.tileproperties[tileId - tileset.firstgid].originOffsetY || 0;
+                if (tileset.tileproperties && tileset.tileproperties[tileId - tileset.firstgid] && tileset.tileproperties[tileId - tileset.firstgid].locationHeight) {
+                    locationHeight += tileset.tileproperties[tileId - tileset.firstgid].locationHeight || 0;
                 }
-                this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, ooy);
+                this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, locationHeight);
                 return;
             }
 
@@ -895,7 +895,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
     }, {
         key: '_paintPriorityTile',
         value: function _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy) {
-            var ooy = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 0;
+            var locationHeight = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 0;
 
             var tileset = this.tiledData.tilesets[textureId];
             var w = tileset.tilewidth;
@@ -933,7 +933,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             sprite.setFrame(ux, uy, w, h);
             sprite.priority = this._getPriority(layerId);
             sprite.z = sprite.zIndex = this._getZIndex(layerId);
-            sprite.origOffsetY = ooy;
+            sprite.locationHeight = locationHeight;
             sprite.show();
 
             this._priorityTilesCount += 1;
@@ -1133,8 +1133,8 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
         value: function _compareChildOrder(a, b) {
             if ((a.z || 0) !== (b.z || 0)) {
                 return (a.z || 0) - (b.z || 0);
-            } else if ((a.y || 0) + (a.origOffsetY || 0) !== (b.y || 0) + (b.origOffsetY || 0)) {
-                return (a.y || 0) + (a.origOffsetY || 0) - ((b.y || 0) + (b.origOffsetY || 0));
+            } else if ((a.y || 0) + (a.locationHeight || 0) !== (b.y || 0) + (b.locationHeight || 0)) {
+                return (a.y || 0) + (a.locationHeight || 0) - ((b.y || 0) + (b.locationHeight || 0));
             } else if ((a.priority || 0) !== (b.priority || 0)) {
                 return (a.priority || 0) - (b.priority || 0);
             } else {
@@ -1177,6 +1177,8 @@ __webpack_require__(6);
 __webpack_require__(7);
 
 __webpack_require__(8);
+
+__webpack_require__(10);
 
 __webpack_require__(9);
 
@@ -2885,6 +2887,10 @@ Game_CharacterBase.prototype.updateMove = function () {
     }
 };
 
+Game_CharacterBase.prototype.locationHeight = function () {
+    return this._locationHeight || 0;
+};
+
 /***/ }),
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
@@ -2983,6 +2989,19 @@ Spriteset_Map.prototype._updateHideOnSpecial = function () {
     if ($gamePlayer && $gameMap) {
         this._tilemap.hideOnSpecial();
     }
+};
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _update = Sprite_Character.prototype.update;
+Sprite_Character.prototype.update = function () {
+	_update.call(this);
+	this.locationHeight = this._character.locationHeight();
 };
 
 /***/ })

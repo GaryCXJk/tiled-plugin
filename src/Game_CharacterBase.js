@@ -37,3 +37,7 @@ Game_CharacterBase.prototype.updateMove = function() {
         })
     }
 }
+
+Game_CharacterBase.prototype.locationHeight = function() {
+	return this._locationHeight || 0
+}
