@@ -3,6 +3,7 @@ import "./DataManager";
 import "./ImageManager";
 import "./TiledManager";
 import "./Sprite_TiledPriorityTile";
+import "./AlphaFilter";
 import { TiledTilemap } from "./TiledTilemap";
 import "./Game_Map";
 import "./Game_CharacterBase";
@@ -66,7 +67,7 @@ TiledManager.addHideFunction('hideOnSwitch', function(layerData) {
 TiledManager.addHideFunction('showOnSwitch', function(layerData) {
     /* Show if switch is on */
     let hideLayer = false;
-    if(!$gameSwitches.value(layerData.properties.hideOnSwitch)) {
+    if(!$gameSwitches.value(layerData.properties.showOnSwitch)) {
         hideLayer = true;
     }
     return hideLayer;

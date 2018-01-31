@@ -1,3 +1,5 @@
+import TiledTileLayer from "./TiledTileLayer";
+
 export class TiledTilemap extends ShaderTilemap {
     initialize(tiledData) {
         this._tiledData = {};
@@ -80,9 +82,16 @@ export class TiledTilemap extends ShaderTilemap {
                 continue;
             }
 
-            let layer = new PIXI.tilemap.CompositeRectTileLayer(zIndex, [], useSquareShader);
+            let layer = new TiledTileLayer(zIndex, [], useSquareShader);
             layer.layerId = id; // @dryami: hack layer index
             layer.spriteId = Sprite._counter++;
+            layer.alpha = layerData.opacity;
+            if(!!layerData.properties && layerData.properties.transition) {
+                layer.transition = layerData.properties.transition
+                layer.isShown = !TiledManager.checkLayerHidden(layerData)[1]
+                layer.transitionStep = layer.isShown ? layer.transition : 0
+                layer.minAlpha = Math.min(layer.alpha, (layerData.properties.minimumOpacity || 0))
+            }
             this._layers.push(layer);
             this.addChild(layer);
             id++;
@@ -214,7 +223,11 @@ export class TiledTilemap extends ShaderTilemap {
             let textureId = this._getTextureId(tileId);
             let dx = obj.x - startX * this._tileWidth;
             let dy = obj.y - startY * this._tileHeight - obj.height;
-            this._paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy);
+            let positionHeight = 0;
+            if(obj.properties && obj.properties.positionHeight) {
+                positionHeight = obj.properties.positionHeight;
+            }
+            this._paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
         }
     }
 
@@ -397,9 +410,24 @@ export class TiledTilemap extends ShaderTilemap {
             let layerData = this.tiledData.layers[layer.layerId];
             if (layerData.properties && layerData.properties.hasOwnProperty("hideOnLevel")) {
                 if (parseInt(layerData.properties.hideOnLevel) !== level) {
+                    if(layer.transition) {
+                        /* If this layer has a transition, we'll need to tell the layer that
+                           it's supposed to be showing. */
+                           layer.isShown = true;
+                    }
                     this.addChild(layer);
                     continue;
                 }
+                /* Since the layer is supposed to be hidden, let's first let it transition if
+                   it has a transition fadeout. */
+                if(layer.transition) {
+                    layer.isShown = false;
+                    if(layer.minAlpha > 0 || layer.transitionStep > 0) {
+                        this.addChild(layer)
+                        continue;
+                    }
+                }
+                /* Otherwise remove the layer and hide it */
                 layerIds.push(layer.layerId);
                 this.removeChild(layer);
             }
@@ -425,10 +453,24 @@ export class TiledTilemap extends ShaderTilemap {
 				if (hasHideProperties) {
 					/* If the layer isn't supposed to be hidden, add the layer to the container */
 					if (!hideLayer) {
+                        if(layer.transition) {
+                            /* If this layer has a transition, we'll need to tell the layer that
+                               it's supposed to be showing. */
+                               layer.isShown = true;
+                        }
 						this.addChild(layer);
 						continue;
-					}
-					/* Otherwise remove the layer and hide it */
+                    }
+                    /* Since the layer is supposed to be hidden, let's first let it transition if
+                       it has a transition fadeout. */
+                    if(layer.transition) {
+                        layer.isShown = false;
+                        if(layer.minAlpha > 0 || layer.transitionStep > 0) {
+                            this.addChild(layer)
+                            continue;
+                        }
+                    }
+                    /* Otherwise remove the layer and hide it */
 					this.removeChild(layer);
 				}
 			}
