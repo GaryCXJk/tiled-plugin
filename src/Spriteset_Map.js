@@ -33,7 +33,7 @@ let _update = Spriteset_Map.prototype.update;
 Spriteset_Map.prototype.update = function () {
     _update.call(this);
     this._updateHideOnLevel();
-	this._updateHideOnSpecial();
+    this._updateHideOnSpecial();
 };
 
 Spriteset_Map.prototype.updateTileset = function () {

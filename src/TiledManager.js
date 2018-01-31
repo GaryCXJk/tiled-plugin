@@ -84,6 +84,14 @@ TiledManager.checkLayerHidden = function(layerData, ignore = []) {
     return data;
 }
 
+TiledManager.hasHideProperties = function(layerData) {
+    return (layerData.properties && (
+        Object.keys(_hideFunctions).filter(key => {
+            return layerData.properties.hasOwnProperty(key)
+        }).length > 0)
+    );
+}
+
 TiledManager.addFlag = function(...flagIds) {
     flagIds.forEach(flagId => {
         _tileFlags[flagId] = _tileFlagIndex++;

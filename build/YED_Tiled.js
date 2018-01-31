@@ -32,6 +32,7 @@
  * @desc Moving and collision checking by half a tile.
  * Can be true or false
  * @default true
+ * @type boolean
  *
  * @param Priority Tiles Limit
  * @desc Limit for priority tile sprites.
@@ -41,6 +42,11 @@
  * @param Map Level Variable
  * @desc Get and set map level by variable
  * @default 0
+ * 
+ * @param Position Height - Always Check On Move Update
+ * @desc Whether the position height should update on every move tick or just the final
+ * @default false
+ * @type boolean
  *
  * @help
  * Use these properties in Tiled Map's layer:
@@ -515,7 +521,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 for (var _iterator2 = Array(size).keys()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
                     var x = _step2.value;
 
-                    var sprite = new Sprite_Base();
+                    var sprite = new Sprite_TiledPriorityTile();
                     sprite.z = sprite.zIndex = zIndex;
                     sprite.layerId = -1;
                     sprite.hide();
@@ -879,14 +885,14 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var uy = Math.floor(rId / tileCols) * h;
 
             if (this._isPriorityTile(layer.layerId)) {
-                var locationHeight = 0;
-                if (this.tiledData.layers[layer.layerId].properties.locationHeight) {
-                    locationHeight += this.tiledData.layers[layer.layerId].properties.locationHeight || 0;
+                var positionHeight = 0;
+                if (this.tiledData.layers[layer.layerId].properties.positionHeight) {
+                    positionHeight += this.tiledData.layers[layer.layerId].properties.positionHeight || 0;
                 }
-                if (tileset.tileproperties && tileset.tileproperties[tileId - tileset.firstgid] && tileset.tileproperties[tileId - tileset.firstgid].locationHeight) {
-                    locationHeight += tileset.tileproperties[tileId - tileset.firstgid].locationHeight || 0;
+                if (tileset.tileproperties && tileset.tileproperties[tileId - tileset.firstgid] && tileset.tileproperties[tileId - tileset.firstgid].positionHeight) {
+                    positionHeight += tileset.tileproperties[tileId - tileset.firstgid].positionHeight || 0;
                 }
-                this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, locationHeight);
+                this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
                 return;
             }
 
@@ -895,7 +901,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
     }, {
         key: '_paintPriorityTile',
         value: function _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy) {
-            var locationHeight = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 0;
+            var positionHeight = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 0;
 
             var tileset = this.tiledData.tilesets[textureId];
             var w = tileset.tilewidth;
@@ -933,7 +939,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             sprite.setFrame(ux, uy, w, h);
             sprite.priority = this._getPriority(layerId);
             sprite.z = sprite.zIndex = this._getZIndex(layerId);
-            sprite.locationHeight = locationHeight;
+            sprite.positionHeight = positionHeight;
             sprite.show();
 
             this._priorityTilesCount += 1;
@@ -1076,7 +1082,6 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
     }, {
         key: 'hideOnSpecial',
         value: function hideOnSpecial() {
-            var layerIds = [];
             var _iteratorNormalCompletion13 = true;
             var _didIteratorError13 = false;
             var _iteratorError13 = undefined;
@@ -1101,12 +1106,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                                 continue;
                             }
                             /* Otherwise remove the layer and hide it */
-                            layerIds.push(layer.layerId);
                             this.removeChild(layer);
                         }
                     }
                 }
-                /* Hide priority tiles that are supposed to be hidden */
             } catch (err) {
                 _didIteratorError13 = true;
                 _iteratorError13 = err;
@@ -1121,20 +1124,14 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     }
                 }
             }
-
-            this._priorityTiles.forEach(function (sprite) {
-                if (layerIds.indexOf(sprite.layerId) > -1) {
-                    sprite.visible = false;
-                }
-            });
         }
     }, {
         key: '_compareChildOrder',
         value: function _compareChildOrder(a, b) {
             if ((a.z || 0) !== (b.z || 0)) {
                 return (a.z || 0) - (b.z || 0);
-            } else if ((a.y || 0) + (a.locationHeight || 0) !== (b.y || 0) + (b.locationHeight || 0)) {
-                return (a.y || 0) + (a.locationHeight || 0) - ((b.y || 0) + (b.locationHeight || 0));
+            } else if ((a.y || 0) + (a.positionHeight || 0) !== (b.y || 0) + (b.positionHeight || 0)) {
+                return (a.y || 0) + (a.positionHeight || 0) - ((b.y || 0) + (b.positionHeight || 0));
             } else if ((a.priority || 0) !== (b.priority || 0)) {
                 return (a.priority || 0) - (b.priority || 0);
             } else {
@@ -1170,6 +1167,8 @@ __webpack_require__(4);
 
 __webpack_require__(5);
 
+__webpack_require__(11);
+
 var _TiledTilemap = __webpack_require__(0);
 
 __webpack_require__(6);
@@ -1178,9 +1177,9 @@ __webpack_require__(7);
 
 __webpack_require__(8);
 
-__webpack_require__(10);
-
 __webpack_require__(9);
+
+__webpack_require__(10);
 
 /* INITIALIZES LISTENERS */
 
@@ -1530,6 +1529,12 @@ TiledManager.checkLayerHidden = function (layerData) {
     return data;
 };
 
+TiledManager.hasHideProperties = function (layerData) {
+    return layerData.properties && Object.keys(_hideFunctions).filter(function (key) {
+        return layerData.properties.hasOwnProperty(key);
+    }).length > 0;
+};
+
 TiledManager.addFlag = function () {
     for (var _len = arguments.length, flagIds = Array(_len), _key = 0; _key < _len; _key++) {
         flagIds[_key] = arguments[_key];
@@ -1602,11 +1607,13 @@ Game_Map.prototype.setup = function (mapId) {
     this._arrowCollisionMap = {};
     this._regions = {};
     this._mapLevelChange = {};
+    this._positionHeightChange = {};
     this._tileFlags = {};
     this._collisionMapLayers = [];
     this._arrowCollisionMapLayers = [];
     this._regionsLayers = [];
     this._mapLevelChangeLayers = [];
+    this._positionHeightChangeLayers = [];
     this._tileFlagsLayers = [];
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
@@ -1636,10 +1643,6 @@ Game_Map.prototype.setRefreshDepth = function (character) {
 
 Game_Map.prototype.isTiledMap = function () {
     return !!this.tiledData;
-};
-
-Game_Map.prototype.hasHideProperties = function (layerData) {
-    return layerData.properties && (layerData.properties.hideOnRegion || layerData.properties.hideOnRegions || layerData.properties.hideOnSwitch);
 };
 
 Game_Map.prototype._setupTiled = function () {
@@ -1684,6 +1687,7 @@ Game_Map.prototype._initializeMapLevelData = function () {
         'arrowCollisionMap': 1 | 2 | 4 | 8,
         'regions': 0,
         'mapLevelChange': -1,
+        'positionHeightChange': -1,
         'tileFlags': 0
     };
 
@@ -1694,6 +1698,10 @@ Game_Map.prototype._initializeMapLevelData = function () {
     for (var idx = 0; idx < dataTypes.length; idx++) {
         var dataType = dataTypes[idx];
         var defaultValue = defaultData[dataType];
+        if (!this['_' + dataType][id]) {
+            this['_' + dataType][id] = {};
+            this['_' + dataType + 'Layers'][id] = [];
+        }
         if (!!this['_' + dataType][id][layerId]) {
             continue;
         }
@@ -1757,7 +1765,7 @@ Game_Map.prototype._setupCollisionFull = function () {
 
         var layerId = 'main';
 
-        if (this.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._collisionMapLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['collisionMap']);
@@ -1917,7 +1925,7 @@ Game_Map.prototype._setupCollisionArrow = function () {
 
         var layerId = 'main';
 
-        if (this.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._arrowCollisionMapLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['arrowCollisionMap']);
@@ -2008,7 +2016,7 @@ Game_Map.prototype._setupRegion = function () {
 
         var layerId = 'main';
 
-        if (this.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._regionsLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['regions']);
@@ -2084,7 +2092,7 @@ Game_Map.prototype._setupMapLevelChange = function () {
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
         var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.toLevel) {
+        if (!layerData.properties || !layerData.properties.hasOwnProperty('toLevel')) {
             continue;
         }
 
@@ -2092,7 +2100,7 @@ Game_Map.prototype._setupMapLevelChange = function () {
         this._initializeMapLevel(level);
         var layerId = 'main';
 
-        if (this.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._mapLevelChangeLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['mapLevelChange']);
@@ -2140,6 +2148,75 @@ Game_Map.prototype._setupMapLevelChange = function () {
     }
 };
 
+Game_Map.prototype._setupPositionHeightChange = function () {
+    var width = this.width();
+    var height = this.height();
+    var size = width * height;
+    var halfWidth = width / 2;
+    var halfHeight = height / 2;
+
+    if (this.isHalfTile()) {
+        size /= 4;
+    }
+
+    for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.hasOwnProperty('floorHeight')) {
+            continue;
+        }
+
+        var level = parseInt(layerData.properties.level) || 0;
+        this._initializeMapLevel(level);
+        var layerId = 'main';
+
+        if (TiledManager.hasHideProperties(layerData)) {
+            layerId = idx;
+            this._positionHeightChangeLayers[level].push(idx);
+            this._initializeMapLevelData(level, layerId, ['positionHeightChange']);
+        }
+
+        var positionHeightChangeMap = this._positionHeightChange[level][layerId];
+
+        var _iteratorNormalCompletion7 = true;
+        var _didIteratorError7 = false;
+        var _iteratorError7 = undefined;
+
+        try {
+            for (var _iterator7 = Array(size).keys()[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+                var x = _step7.value;
+
+                var realX = x;
+                var toLevel = parseInt(layerData.properties.floorHeight);
+                if (this.isHalfTile()) {
+                    realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
+                }
+
+                if (!!layerData.data[x]) {
+                    positionHeightChangeMap[realX] = toLevel;
+                    if (this.isHalfTile()) {
+                        positionHeightChangeMap[realX + 1] = toLevel;
+                        positionHeightChangeMap[realX + width] = toLevel;
+                        positionHeightChangeMap[realX + width + 1] = toLevel;
+                    }
+                }
+            }
+        } catch (err) {
+            _didIteratorError7 = true;
+            _iteratorError7 = err;
+        } finally {
+            try {
+                if (!_iteratorNormalCompletion7 && _iterator7.return) {
+                    _iterator7.return();
+                }
+            } finally {
+                if (_didIteratorError7) {
+                    throw _iteratorError7;
+                }
+            }
+        }
+    }
+};
+
 Game_Map.prototype._setupTileFlags = function () {
     var width = this.width();
     var height = this.height();
@@ -2162,7 +2239,7 @@ Game_Map.prototype._setupTileFlags = function () {
 
         var layerId = 'main';
 
-        if (this.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._tileFlagsLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['tileFlags']);
@@ -2170,13 +2247,13 @@ Game_Map.prototype._setupTileFlags = function () {
 
         var tileFlagMap = this._tileFlags[level][layerId];
 
-        var _iteratorNormalCompletion7 = true;
-        var _didIteratorError7 = false;
-        var _iteratorError7 = undefined;
+        var _iteratorNormalCompletion8 = true;
+        var _didIteratorError8 = false;
+        var _iteratorError8 = undefined;
 
         try {
-            for (var _iterator7 = Array(size).keys()[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-                var x = _step7.value;
+            for (var _iterator8 = Array(size).keys()[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+                var x = _step8.value;
 
                 var realX = x;
                 if (this.isHalfTile()) {
@@ -2202,16 +2279,16 @@ Game_Map.prototype._setupTileFlags = function () {
                 }
             }
         } catch (err) {
-            _didIteratorError7 = true;
-            _iteratorError7 = err;
+            _didIteratorError8 = true;
+            _iteratorError8 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion7 && _iterator7.return) {
-                    _iterator7.return();
+                if (!_iteratorNormalCompletion8 && _iterator8.return) {
+                    _iterator8.return();
                 }
             } finally {
-                if (_didIteratorError7) {
-                    throw _iteratorError7;
+                if (_didIteratorError8) {
+                    throw _iteratorError8;
                 }
             }
         }
@@ -2250,25 +2327,25 @@ Game_Map.prototype._combineFlags = function (source, target) {
 };
 
 Game_Map.prototype._setupTiledEvents = function () {
-    var _iteratorNormalCompletion8 = true;
-    var _didIteratorError8 = false;
-    var _iteratorError8 = undefined;
+    var _iteratorNormalCompletion9 = true;
+    var _didIteratorError9 = false;
+    var _iteratorError9 = undefined;
 
     try {
-        for (var _iterator8 = this.tiledData.layers[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
-            var layerData = _step8.value;
+        for (var _iterator9 = this.tiledData.layers[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
+            var layerData = _step9.value;
 
             if (layerData.type !== "objectgroup") {
                 continue;
             }
 
-            var _iteratorNormalCompletion9 = true;
-            var _didIteratorError9 = false;
-            var _iteratorError9 = undefined;
+            var _iteratorNormalCompletion10 = true;
+            var _didIteratorError10 = false;
+            var _iteratorError10 = undefined;
 
             try {
-                for (var _iterator9 = layerData.objects[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
-                    var object = _step9.value;
+                for (var _iterator10 = layerData.objects[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+                    var object = _step10.value;
 
                     if (!object.properties) {
                         continue;
@@ -2293,31 +2370,31 @@ Game_Map.prototype._setupTiledEvents = function () {
                     event._tiledProperties = object.properties;
                 }
             } catch (err) {
-                _didIteratorError9 = true;
-                _iteratorError9 = err;
+                _didIteratorError10 = true;
+                _iteratorError10 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion9 && _iterator9.return) {
-                        _iterator9.return();
+                    if (!_iteratorNormalCompletion10 && _iterator10.return) {
+                        _iterator10.return();
                     }
                 } finally {
-                    if (_didIteratorError9) {
-                        throw _iteratorError9;
+                    if (_didIteratorError10) {
+                        throw _iteratorError10;
                     }
                 }
             }
         }
     } catch (err) {
-        _didIteratorError8 = true;
-        _iteratorError8 = err;
+        _didIteratorError9 = true;
+        _iteratorError9 = err;
     } finally {
         try {
-            if (!_iteratorNormalCompletion8 && _iterator8.return) {
-                _iterator8.return();
+            if (!_iteratorNormalCompletion9 && _iterator9.return) {
+                _iterator9.return();
             }
         } finally {
-            if (_didIteratorError8) {
-                throw _iteratorError8;
+            if (_didIteratorError9) {
+                throw _iteratorError9;
             }
         }
     }
@@ -2530,6 +2607,24 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     }
     this.currentMapLevel = mapLevelChangeValue;
     return true;
+};
+
+Game_Map.prototype.checkPositionHeight = function (x, y) {
+    var positionHeightChange = this._positionHeightChange[this.currentMapLevel];
+    var positionHeightChangeLayer = this._positionHeightChangeLayers[this.currentMapLevel];
+    var index = y * this.width() + x;
+    var positionHeightChangeValue = positionHeightChange.main[index];
+    if (positionHeightChangeLayer.length > 0) {
+        for (var idx = 0; idx < positionHeightChangeLayer.length; idx++) {
+            var layerId = positionHeightChangeLayer[idx];
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'positionHeightChanges');
+            if (!hideData[1]) {
+                positionHeightChangeValue = positionHeightChange[layerId][index];
+            }
+        }
+    }
+    return positionHeightChangeValue;
 };
 
 Game_Map.prototype.getTileFlags = function (x, y) {
@@ -2833,7 +2928,10 @@ Game_Map.prototype.getTileProperties = function (x, y) {
     this.tiledData.layers.forEach(function (layerData, i) {
         if (layerData && layerData.properties) {
             if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData)[1]) {
-                tileProperties[i] = _this.getTileProperties(x, y, i);
+                var props = _this.getTileProperties(x, y, i);
+                if (Object.keys(props).length > 0) {
+                    tileProperties[i] = props;
+                }
             }
         }
     });
@@ -2847,8 +2945,9 @@ Game_Map.prototype.getTileProperties = function (x, y) {
 "use strict";
 
 
+var pluginParams = PluginManager.parameters("YED_Tiled");
+
 Game_CharacterBase.prototype.screenZ = function () {
-    var pluginParams = PluginManager.parameters("YED_Tiled");
     if (this._priorityType == 0) {
         return parseInt(pluginParams["Z - Below Player"]);
     }
@@ -2880,6 +2979,12 @@ Game_CharacterBase.prototype.updateMove = function () {
     var vert = this._realY > this._y ? 8 : this._realY < this._y ? 2 : 0;
     var d = hori + vert;
     _updateMove.call(this);
+    if (!this.isMoving() || pluginParams["Position Height - Always Check On Move Update"].toLowerCase() === "true") {
+        var newLocationHeight = $gameMap.checkPositionHeight(this._x, this._y);
+        if (newLocationHeight > -1) {
+            this._locationHeight = newLocationHeight;
+        }
+    }
     if (!this.isMoving() && $gameMap.isSlipperyFloor(this._x, this._y)) {
         TiledManager.triggerListener(this, 'slipperyfloor', {
             d: d
@@ -2910,6 +3015,19 @@ Game_Player.prototype._checkMapLevelChangingHere = function () {
 
 /***/ }),
 /* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _update = Sprite_Character.prototype.update;
+Sprite_Character.prototype.update = function () {
+	_update.call(this);
+	this.locationHeight = this._character.locationHeight();
+};
+
+/***/ }),
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2992,16 +3110,28 @@ Spriteset_Map.prototype._updateHideOnSpecial = function () {
 };
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _update = Sprite_Character.prototype.update;
-Sprite_Character.prototype.update = function () {
-	_update.call(this);
-	this.locationHeight = this._character.locationHeight();
+//-----------------------------------------------------------------------------
+// Sprite_TiledPriorityTile
+//
+// The sprite for displaying a priority tile.
+
+function Sprite_TiledPriorityTile() {
+    this.initialize.apply(this, arguments);
+}
+
+Sprite_TiledPriorityTile.prototype = Object.create(Sprite_Base.prototype);
+Sprite_TiledPriorityTile.prototype.constructor = Sprite_TiledPriorityTile;
+
+window.Sprite_TiledPriorityTile = Sprite_TiledPriorityTile;
+
+Sprite_TiledPriorityTile.prototype.updateVisibility = function () {
+    this.visible = this.layerId === -1 || !TiledManager.checkLayerHidden($gameMap.tiledData.layers[this.layerId])[1];
 };
 
 /***/ })

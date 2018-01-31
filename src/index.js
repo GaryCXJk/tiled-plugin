@@ -2,6 +2,7 @@ import "./TilesetManager";
 import "./DataManager";
 import "./ImageManager";
 import "./TiledManager";
+import "./Sprite_TiledPriorityTile";
 import { TiledTilemap } from "./TiledTilemap";
 import "./Game_Map";
 import "./Game_CharacterBase";

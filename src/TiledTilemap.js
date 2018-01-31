@@ -96,7 +96,7 @@ export class TiledTilemap extends ShaderTilemap {
         let size = parseInt(pluginParams["Priority Tiles Limit"]);
         let zIndex = parseInt(pluginParams["Z - Player"]);
         for (let x of Array(size).keys()) {
-            let sprite = new Sprite_Base();
+            let sprite = new Sprite_TiledPriorityTile();
             sprite.z = sprite.zIndex = zIndex;
             sprite.layerId = -1;
             sprite.hide();
@@ -265,23 +265,23 @@ export class TiledTilemap extends ShaderTilemap {
         let uy = Math.floor(rId / tileCols) * h;
 
         if (this._isPriorityTile(layer.layerId)) {
-            let locationHeight = 0;
-            if(this.tiledData.layers[layer.layerId].properties.locationHeight) {
-                locationHeight+= this.tiledData.layers[layer.layerId].properties.locationHeight || 0
+            let positionHeight = 0;
+            if(this.tiledData.layers[layer.layerId].properties.positionHeight) {
+                positionHeight+= this.tiledData.layers[layer.layerId].properties.positionHeight || 0
             }
             if(tileset.tileproperties &&
                 tileset.tileproperties[tileId - tileset.firstgid] &&
-                tileset.tileproperties[tileId - tileset.firstgid].locationHeight) {
-                locationHeight+= tileset.tileproperties[tileId - tileset.firstgid].locationHeight || 0
+                tileset.tileproperties[tileId - tileset.firstgid].positionHeight) {
+                positionHeight+= tileset.tileproperties[tileId - tileset.firstgid].positionHeight || 0
             }
-            this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, locationHeight);
+            this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
             return;
         }
 
         rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
     }
 
-    _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, locationHeight = 0) {
+    _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight = 0) {
         let tileset = this.tiledData.tilesets[textureId];
         let w = tileset.tilewidth;
         let h = tileset.tileheight;
@@ -318,7 +318,7 @@ export class TiledTilemap extends ShaderTilemap {
         sprite.setFrame(ux, uy, w, h);
         sprite.priority = this._getPriority(layerId);
         sprite.z = sprite.zIndex = this._getZIndex(layerId);
-        sprite.locationHeight = locationHeight;
+        sprite.positionHeight = positionHeight;
         sprite.show();
 
         this._priorityTilesCount += 1;
@@ -412,7 +412,6 @@ export class TiledTilemap extends ShaderTilemap {
     }
     
     hideOnSpecial() {
-        let layerIds = [];
         for(let layer of this._layers) {
             let layerData = this.tiledData.layers[layer.layerId];
 			if(layerData.properties) {
@@ -430,24 +429,17 @@ export class TiledTilemap extends ShaderTilemap {
 						continue;
 					}
 					/* Otherwise remove the layer and hide it */
-					layerIds.push(layer.layerId);
 					this.removeChild(layer);
 				}
 			}
         }
-		/* Hide priority tiles that are supposed to be hidden */
-        this._priorityTiles.forEach(sprite => {
-            if(layerIds.indexOf(sprite.layerId) > -1) {
-                sprite.visible = false;
-            }
-        })
     }
 	
     _compareChildOrder(a, b) {
         if ((a.z || 0) !== (b.z || 0)) {
             return (a.z || 0) - (b.z || 0);
-        } else if (((a.y || 0) + (a.locationHeight || 0)) !== ((b.y || 0) + (b.locationHeight || 0))) {
-            return ((a.y || 0) + (a.locationHeight || 0)) - ((b.y || 0) + (b.locationHeight || 0));
+        } else if (((a.y || 0) + (a.positionHeight || 0)) !== ((b.y || 0) + (b.positionHeight || 0))) {
+            return ((a.y || 0) + (a.positionHeight || 0)) - ((b.y || 0) + (b.positionHeight || 0));
         } else if ((a.priority || 0) !== (b.priority || 0)) {
             return (a.priority || 0) - (b.priority || 0);
         } else {

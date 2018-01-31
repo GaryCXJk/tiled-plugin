@@ -32,6 +32,7 @@
  * @desc Moving and collision checking by half a tile.
  * Can be true or false
  * @default true
+ * @type boolean
  *
  * @param Priority Tiles Limit
  * @desc Limit for priority tile sprites.
@@ -41,6 +42,11 @@
  * @param Map Level Variable
  * @desc Get and set map level by variable
  * @default 0
+ * 
+ * @param Position Height - Always Check On Move Update
+ * @desc Whether the position height should update on every move tick or just the final
+ * @default false
+ * @type boolean
  *
  * @help
  * Use these properties in Tiled Map's layer:

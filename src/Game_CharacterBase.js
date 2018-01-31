@@ -1,5 +1,6 @@
+let pluginParams = PluginManager.parameters("YED_Tiled");
+
 Game_CharacterBase.prototype.screenZ = function () {
-    let pluginParams = PluginManager.parameters("YED_Tiled");
     if (this._priorityType == 0) {
         return parseInt(pluginParams["Z - Below Player"]);
     }
@@ -31,6 +32,12 @@ Game_CharacterBase.prototype.updateMove = function() {
     var vert = (this._realY > this._y ? 8 : (this._realY < this._y ? 2 : 0))
     var d = hori + vert
     _updateMove.call(this);
+    if(!this.isMoving() || pluginParams["Position Height - Always Check On Move Update"].toLowerCase() === "true") {
+        let newLocationHeight = $gameMap.checkPositionHeight(this._x, this._y);
+        if(newLocationHeight > -1) {
+            this._locationHeight = newLocationHeight;
+        }
+    }
     if(!this.isMoving() && $gameMap.isSlipperyFloor(this._x, this._y)) {
         TiledManager.triggerListener(this, 'slipperyfloor', {
             d
