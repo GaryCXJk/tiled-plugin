@@ -4,6 +4,7 @@ export class TiledTilemap extends ShaderTilemap {
     initialize(tiledData) {
         this._tiledData = {};
         this._layers = [];
+        this._parallaxlayers = [];
         this._priorityTiles = [];
         this._priorityTilesCount = 0;
         this.tiledData = tiledData;
@@ -53,6 +54,11 @@ export class TiledTilemap extends ShaderTilemap {
 
         for (let layerData of this.tiledData.layers) {
             let zIndex = 0;
+            if (layerData.type === "imagelayer") {
+                this._createImageLayer(layerData, id);
+                id++;
+                continue;
+            }
             if (layerData.type != "tilelayer") {
                 id++;
                 continue;
@@ -88,7 +94,7 @@ export class TiledTilemap extends ShaderTilemap {
             layer.alpha = layerData.opacity;
             if(!!layerData.properties && layerData.properties.transition) {
                 layer.transition = layerData.properties.transition
-                layer.isShown = !TiledManager.checkLayerHidden(layerData)[1]
+                layer.isShown = !TiledManager.checkLayerHidden(layerData)
                 layer.transitionStep = layer.isShown ? layer.transition : 0
                 layer.minAlpha = Math.min(layer.alpha, (layerData.properties.minimumOpacity || 0))
             }
@@ -443,14 +449,12 @@ export class TiledTilemap extends ShaderTilemap {
         for(let layer of this._layers) {
             let layerData = this.tiledData.layers[layer.layerId];
 			if(layerData.properties) {
-                let hiddenData = TiledManager.checkLayerHidden(layerData);
-				let hasHideProperties = hiddenData[0];
-                let hideLayer = hiddenData[1];
+                let hideLayer = TiledManager.checkLayerHidden(layerData);
                 
 				/* If the layer has a hide property, run this code.
 				 * You don't need to run it for layers that don't have any properties that would
 				   hide this layer. */
-				if (hasHideProperties) {
+				if (TiledManager.hasHideProperties(layerData)) {
 					/* If the layer isn't supposed to be hidden, add the layer to the container */
 					if (!hideLayer) {
                         if(layer.transition) {
@@ -478,7 +482,18 @@ export class TiledTilemap extends ShaderTilemap {
     }
 	
     _compareChildOrder(a, b) {
-        if ((a.z || 0) !== (b.z || 0)) {
+        if((this._layers.indexOf(a) > -1 || this._parallaxlayers.indexOf(a) > -1) &&
+            (this._layers.indexOf(b) > -1 || this._parallaxlayers.indexOf(b) > -1)) {
+            if ((a.z || 0) !== (b.z || 0)) {
+                return (a.z || 0) - (b.z || 0);
+            } else if ((a.priority || 0) !== (b.priority || 0)) {
+                return (a.priority || 0) - (b.priority || 0);
+            } else if((a.layerId || 0) !== (b.layerId || 0)) {
+                return (a.layerId || 0) - (b.layerId || 0);
+            } else {
+                return a.spriteId - b.spriteId;
+            }
+        } else if ((a.z || 0) !== (b.z || 0)) {
             return (a.z || 0) - (b.z || 0);
         } else if (((a.y || 0) + (a.positionHeight || 0)) !== ((b.y || 0) + (b.positionHeight || 0))) {
             return ((a.y || 0) + (a.positionHeight || 0)) - ((b.y || 0) + (b.positionHeight || 0));
@@ -487,5 +502,122 @@ export class TiledTilemap extends ShaderTilemap {
         } else {
             return a.spriteId - b.spriteId;
         }
+    }
+
+    /* Parallax map stuff */
+
+    _createImageLayer(layerData, id) {
+        let zIndex = 0;
+        let repeatX = true;
+        let repeatY = true;
+        let deltaX = 0;
+        let deltaY = 0;
+        let autoX = 0;
+        let autoY = 0;
+        let hue = 0;
+
+        if(!!layerData.properties) {
+            if(!!layerData.properties.ignoreLoading) {
+                return;
+            }
+            if (!!layerData.properties.zIndex) {
+                zIndex = parseInt(layerData.properties.zIndex);
+            }
+            if(layerData.properties.hasOwnProperty('repeatX')) {
+                repeatX = !!layerData.properties.repeatX;
+            }
+            if(layerData.properties.hasOwnProperty('repeatY')) {
+                repeatY = !!layerData.properties.repeatY;
+            }
+            if(!!layerData.properties.deltaX) {
+                deltaX = layerData.properties.deltaX;
+            }
+            if(!!layerData.properties.deltaY) {
+                deltaY = layerData.properties.deltaY;
+            }
+            if(!!layerData.properties.autoX) {
+                autoX = layerData.properties.autoX;
+            }
+            if(!!layerData.properties.autoY) {
+                autoY = layerData.properties.autoY;
+            }
+            if(!!layerData.properties.hue) {
+                hue = parseInt(layerData.properties.hue)
+            }
+        }
+
+        let layer;
+
+        if(!repeatX && !repeatY && !autoX && !autoY) {
+            layer = new Sprite_Base();
+        } else {
+            layer = new TilingSprite();
+            layer.move(0, 0, Graphics.width, Graphics.height);
+        }
+        layer.layerId = id;
+        layer.spriteId = Sprite._counter++;
+        layer.alpha = layerData.opacity;
+        if(TiledManager.hasHideProperties(layerData) && !!layerData.properties.transition) {
+            layer._transition = layerData.properties.transition;
+            layer._baseAlpha = layerData.opacity;
+            layer._minAlpha = Math.min(layer._baseAlpha, (layerData.properties.minimumOpacity || 0));
+            layer._isShown = !TiledManager.checkLayerHidden(layerData);
+            layer._transitionPhase = layer._isShown ? layer._transition : 0
+        }
+        layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+        layer.baseX = layerData.x + (layerData.offsetx || 0);
+        layer.baseY = layerData.y + (layerData.offsety || 0);
+        layer.z = layer.zIndex = zIndex;
+        layer.repeatX = repeatX;
+        layer.repeatY = repeatY;
+        layer.deltaX = deltaX;
+        layer.deltaY = deltaY;
+        layer.stepAutoX = autoX;
+        layer.stepAutoY = autoY;
+        layer.autoX = 0;
+        layer.autoY = 0;
+        this._parallaxlayers.push(layer);
+        this.addChild(layer);
+    }
+
+    updateParallax() {
+        this._parallaxlayers.forEach(layer => {
+            let layerData = this.tiledData.layers[layer.layerId];
+            if(TiledManager.hasHideProperties(layerData)) {
+                let visibility = TiledManager.checkLayerHidden(layerData);
+                if(!!layerData.properties.transition) {
+                    layer._isShown = !visibility;
+                    layer._transitionPhase = Math.max(0, Math.min(layer._transition, layer._transitionPhase + (layer._isShown ? 1 : -1)));
+                    layer.alpha = (((layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition)) + layer._minAlpha);
+                    visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
+                }
+                layer.visible = visibility;
+            }
+            if(!!layer.origin) {
+                if(!layer.repeatX) {
+                    layer.origin.x = layer.baseX + layer.autoX;
+                    layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.width = layer.bitmap.width;
+                } else {
+                    layer.origin.x = layer.baseX + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.x = layer.baseX;
+                    layer.width = Graphics.width;
+                }
+                if(!layer.repeatY) {
+                    layer.origin.y = layer.baseY + layer.autoY;
+                    layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.height = layer.bitmap.height;
+                } else {
+                    layer.origin.y = layer.baseY + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.y = layer.baseY;
+                    layer.height = Graphics.height;
+                }
+                layer.autoX+= layer.stepAutoX;
+                layer.autoY+= layer.stepAutoY;
+            } else {
+                layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+            }
+        })
     }
 }

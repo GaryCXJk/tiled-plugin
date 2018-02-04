@@ -368,9 +368,8 @@
 /******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
-/******/ ({
-
-/***/ 0:
+/******/ ([
+/* 0 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -385,7 +384,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
 
-var _TiledTileLayer = __webpack_require__(204);
+var _TiledTileLayer = __webpack_require__(8);
 
 var _TiledTileLayer2 = _interopRequireDefault(_TiledTileLayer);
 
@@ -411,6 +410,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
         value: function initialize(tiledData) {
             this._tiledData = {};
             this._layers = [];
+            this._parallaxlayers = [];
             this._priorityTiles = [];
             this._priorityTilesCount = 0;
             this.tiledData = tiledData;
@@ -462,6 +462,11 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     var layerData = _step.value;
 
                     var zIndex = 0;
+                    if (layerData.type === "imagelayer") {
+                        this._createImageLayer(layerData, id);
+                        id++;
+                        continue;
+                    }
                     if (layerData.type != "tilelayer") {
                         id++;
                         continue;
@@ -497,7 +502,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     layer.alpha = layerData.opacity;
                     if (!!layerData.properties && layerData.properties.transition) {
                         layer.transition = layerData.properties.transition;
-                        layer.isShown = !TiledManager.checkLayerHidden(layerData)[1];
+                        layer.isShown = !TiledManager.checkLayerHidden(layerData);
                         layer.transitionStep = layer.isShown ? layer.transition : 0;
                         layer.minAlpha = Math.min(layer.alpha, layerData.properties.minimumOpacity || 0);
                     }
@@ -1126,14 +1131,12 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
 
                     var layerData = this.tiledData.layers[layer.layerId];
                     if (layerData.properties) {
-                        var hiddenData = TiledManager.checkLayerHidden(layerData);
-                        var hasHideProperties = hiddenData[0];
-                        var hideLayer = hiddenData[1];
+                        var hideLayer = TiledManager.checkLayerHidden(layerData);
 
                         /* If the layer has a hide property, run this code.
                          * You don't need to run it for layers that don't have any properties that would
                            hide this layer. */
-                        if (hasHideProperties) {
+                        if (TiledManager.hasHideProperties(layerData)) {
                             /* If the layer isn't supposed to be hidden, add the layer to the container */
                             if (!hideLayer) {
                                 if (layer.transition) {
@@ -1176,7 +1179,17 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
     }, {
         key: '_compareChildOrder',
         value: function _compareChildOrder(a, b) {
-            if ((a.z || 0) !== (b.z || 0)) {
+            if ((this._layers.indexOf(a) > -1 || this._parallaxlayers.indexOf(a) > -1) && (this._layers.indexOf(b) > -1 || this._parallaxlayers.indexOf(b) > -1)) {
+                if ((a.z || 0) !== (b.z || 0)) {
+                    return (a.z || 0) - (b.z || 0);
+                } else if ((a.priority || 0) !== (b.priority || 0)) {
+                    return (a.priority || 0) - (b.priority || 0);
+                } else if ((a.layerId || 0) !== (b.layerId || 0)) {
+                    return (a.layerId || 0) - (b.layerId || 0);
+                } else {
+                    return a.spriteId - b.spriteId;
+                }
+            } else if ((a.z || 0) !== (b.z || 0)) {
                 return (a.z || 0) - (b.z || 0);
             } else if ((a.y || 0) + (a.positionHeight || 0) !== (b.y || 0) + (b.positionHeight || 0)) {
                 return (a.y || 0) + (a.positionHeight || 0) - ((b.y || 0) + (b.positionHeight || 0));
@@ -1185,6 +1198,128 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             } else {
                 return a.spriteId - b.spriteId;
             }
+        }
+
+        /* Parallax map stuff */
+
+    }, {
+        key: '_createImageLayer',
+        value: function _createImageLayer(layerData, id) {
+            var zIndex = 0;
+            var repeatX = true;
+            var repeatY = true;
+            var deltaX = 0;
+            var deltaY = 0;
+            var autoX = 0;
+            var autoY = 0;
+            var hue = 0;
+
+            if (!!layerData.properties) {
+                if (!!layerData.properties.ignoreLoading) {
+                    return;
+                }
+                if (!!layerData.properties.zIndex) {
+                    zIndex = parseInt(layerData.properties.zIndex);
+                }
+                if (layerData.properties.hasOwnProperty('repeatX')) {
+                    repeatX = !!layerData.properties.repeatX;
+                }
+                if (layerData.properties.hasOwnProperty('repeatY')) {
+                    repeatY = !!layerData.properties.repeatY;
+                }
+                if (!!layerData.properties.deltaX) {
+                    deltaX = layerData.properties.deltaX;
+                }
+                if (!!layerData.properties.deltaY) {
+                    deltaY = layerData.properties.deltaY;
+                }
+                if (!!layerData.properties.autoX) {
+                    autoX = layerData.properties.autoX;
+                }
+                if (!!layerData.properties.autoY) {
+                    autoY = layerData.properties.autoY;
+                }
+                if (!!layerData.properties.hue) {
+                    hue = parseInt(layerData.properties.hue);
+                }
+            }
+
+            var layer = void 0;
+
+            if (!repeatX && !repeatY && !autoX && !autoY) {
+                layer = new Sprite_Base();
+            } else {
+                layer = new TilingSprite();
+                layer.move(0, 0, Graphics.width, Graphics.height);
+            }
+            layer.layerId = id;
+            layer.spriteId = Sprite._counter++;
+            layer.alpha = layerData.opacity;
+            if (TiledManager.hasHideProperties(layerData) && !!layerData.properties.transition) {
+                layer._transition = layerData.properties.transition;
+                layer._baseAlpha = layerData.opacity;
+                layer._minAlpha = Math.min(layer._baseAlpha, layerData.properties.minimumOpacity || 0);
+                layer._isShown = !TiledManager.checkLayerHidden(layerData);
+                layer._transitionPhase = layer._isShown ? layer._transition : 0;
+            }
+            layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+            layer.baseX = layerData.x + (layerData.offsetx || 0);
+            layer.baseY = layerData.y + (layerData.offsety || 0);
+            layer.z = layer.zIndex = zIndex;
+            layer.repeatX = repeatX;
+            layer.repeatY = repeatY;
+            layer.deltaX = deltaX;
+            layer.deltaY = deltaY;
+            layer.stepAutoX = autoX;
+            layer.stepAutoY = autoY;
+            layer.autoX = 0;
+            layer.autoY = 0;
+            this._parallaxlayers.push(layer);
+            this.addChild(layer);
+        }
+    }, {
+        key: 'updateParallax',
+        value: function updateParallax() {
+            var _this2 = this;
+
+            this._parallaxlayers.forEach(function (layer) {
+                var layerData = _this2.tiledData.layers[layer.layerId];
+                if (TiledManager.hasHideProperties(layerData)) {
+                    var visibility = TiledManager.checkLayerHidden(layerData);
+                    if (!!layerData.properties.transition) {
+                        layer._isShown = !visibility;
+                        layer._transitionPhase = Math.max(0, Math.min(layer._transition, layer._transitionPhase + (layer._isShown ? 1 : -1)));
+                        layer.alpha = (layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition) + layer._minAlpha;
+                        visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
+                    }
+                    _this2.visible = visibility;
+                }
+                if (!!layer.origin) {
+                    if (!layer.repeatX) {
+                        layer.origin.x = layer.baseX + layer.autoX;
+                        layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                        layer.width = layer.bitmap.width;
+                    } else {
+                        layer.origin.x = layer.baseX + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                        layer.x = layer.baseX;
+                        layer.width = Graphics.width;
+                    }
+                    if (!layer.repeatY) {
+                        layer.origin.y = layer.baseY + layer.autoY;
+                        layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                        layer.height = layer.bitmap.height;
+                    } else {
+                        layer.origin.y = layer.baseY + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                        layer.y = layer.baseY;
+                        layer.height = Graphics.height;
+                    }
+                    layer.autoX += layer.stepAutoX;
+                    layer.autoY += layer.stepAutoY;
+                } else {
+                    layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                }
+            });
         }
     }, {
         key: 'tiledData',
@@ -1201,8 +1336,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
 }(ShaderTilemap);
 
 /***/ }),
-
-/***/ 1:
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1218,19 +1352,19 @@ __webpack_require__(5);
 
 __webpack_require__(6);
 
-__webpack_require__(206);
+__webpack_require__(7);
 
 var _TiledTilemap = __webpack_require__(0);
-
-__webpack_require__(8);
-
-__webpack_require__(9);
 
 __webpack_require__(10);
 
 __webpack_require__(11);
 
 __webpack_require__(12);
+
+__webpack_require__(13);
+
+__webpack_require__(14);
 
 /* INITIALIZES LISTENERS */
 
@@ -1304,124 +1438,7 @@ TiledManager.addFlag('ladder', 'bush', 'counter', 'damage');
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp');
 
 /***/ }),
-
-/***/ 10:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _checkEventTriggerHere = Game_Player.prototype.checkEventTriggerHere;
-Game_Player.prototype.checkEventTriggerHere = function (triggers) {
-    _checkEventTriggerHere.call(this, triggers);
-    this._checkMapLevelChangingHere();
-};
-
-Game_Player.prototype._checkMapLevelChangingHere = function () {
-    $gameMap.checkMapLevelChanging(this.x, this.y);
-};
-
-/***/ }),
-
-/***/ 11:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _update = Sprite_Character.prototype.update;
-Sprite_Character.prototype.update = function () {
-	_update.call(this);
-	this.locationHeight = this._character.locationHeight();
-};
-
-/***/ }),
-
-/***/ 12:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _TiledTilemap = __webpack_require__(0);
-
-var _createTilemap = Spriteset_Map.prototype.createTilemap;
-Spriteset_Map.prototype.createTilemap = function () {
-    if (!$gameMap.isTiledMap()) {
-        _createTilemap.call(this);
-        return;
-    }
-    this._tilemap = new _TiledTilemap.TiledTilemap($gameMap.tiledData);
-    this._tilemap.horizontalWrap = $gameMap.isLoopHorizontal();
-    this._tilemap.verticalWrap = $gameMap.isLoopVertical();
-    this.loadTileset();
-    this._baseSprite.addChild(this._tilemap);
-};
-
-var _loadTileset = Spriteset_Map.prototype.loadTileset;
-Spriteset_Map.prototype.loadTileset = function () {
-    if (!$gameMap.isTiledMap()) {
-        _loadTileset.call(this);
-        return;
-    }
-
-    var i = 0;
-    var _iteratorNormalCompletion = true;
-    var _didIteratorError = false;
-    var _iteratorError = undefined;
-
-    try {
-        for (var _iterator = $gameMap.tiledData.tilesets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-            var tileset = _step.value;
-
-            this._tilemap.bitmaps[i] = ImageManager.loadParserTileset(tileset.image, 0);
-            i++;
-        }
-    } catch (err) {
-        _didIteratorError = true;
-        _iteratorError = err;
-    } finally {
-        try {
-            if (!_iteratorNormalCompletion && _iterator.return) {
-                _iterator.return();
-            }
-        } finally {
-            if (_didIteratorError) {
-                throw _iteratorError;
-            }
-        }
-    }
-
-    this._tilemap.refreshTileset();
-    this._tileset = $gameMap.tiledData.tilesets;
-};
-
-var _update = Spriteset_Map.prototype.update;
-Spriteset_Map.prototype.update = function () {
-    _update.call(this);
-    this._updateHideOnLevel();
-    this._updateHideOnSpecial();
-};
-
-Spriteset_Map.prototype.updateTileset = function () {
-    if (this._tileset !== $gameMap.tiledData.tilesets) {
-        this.loadTileset();
-    }
-};
-
-Spriteset_Map.prototype._updateHideOnLevel = function () {
-    this._tilemap.hideOnLevel($gameMap.currentMapLevel);
-};
-
-Spriteset_Map.prototype._updateHideOnSpecial = function () {
-    if ($gamePlayer && $gameMap) {
-        this._tilemap.hideOnSpecial();
-    }
-};
-
-/***/ }),
-
-/***/ 2:
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1481,224 +1498,7 @@ TilesetManager.loadTileset = function (path) {
 };
 
 /***/ }),
-
-/***/ 204:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _TiledTileShader = __webpack_require__(205);
-
-var _TiledTileShader2 = _interopRequireDefault(_TiledTileShader);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var TiledTileLayer = function (_PIXI$tilemap$Composi) {
-    _inherits(TiledTileLayer, _PIXI$tilemap$Composi);
-
-    function TiledTileLayer(zIndex, bitmaps, useSquare, texPerChild) {
-        _classCallCheck(this, TiledTileLayer);
-
-        return _possibleConstructorReturn(this, (TiledTileLayer.__proto__ || Object.getPrototypeOf(TiledTileLayer)).call(this, zIndex, bitmaps, useSquare, texPerChild));
-    }
-
-    _createClass(TiledTileLayer, [{
-        key: "renderWebGL",
-        value: function renderWebGL(renderer) {
-            var gl = renderer.gl;
-            if (!this.tiledTileShader) {
-                this.tiledTileShader = new _TiledTileShader2.default(gl, renderer.plugins.tilemap.maxTextures, this.useSquare);
-            }
-            var alpha = this.alpha;
-            if (this.transition) {
-                this.transitionStep = Math.max(0, Math.min(this.transition, this.transitionStep + (this.isShown ? 1 : -1)));
-                alpha -= this.minAlpha;
-                alpha *= this.transitionStep / this.transition;
-                alpha += this.minAlpha;
-            }
-            //var shader = renderer.plugins.tilemap.getShader(this.useSquare);
-            var shader = this.tiledTileShader;
-            renderer.setObjectRenderer(renderer.plugins.tilemap);
-            renderer.bindShader(shader);
-            this._globalMat = this._globalMat || new PIXI.Matrix();
-            renderer._activeRenderTarget.projectionMatrix.copy(this._globalMat).append(this.worldTransform);
-            shader.uniforms.projectionMatrix = this._globalMat.toArray(true);
-            shader.uniforms.shadowColor = this.shadowColor;
-            shader.uniforms.alpha = alpha;
-            if (this.useSquare) {
-                var tempScale = this._tempScale = this._tempScale || [0, 0];
-                tempScale[0] = this._globalMat.a >= 0 ? 1 : -1;
-                tempScale[1] = this._globalMat.d < 0 ? 1 : -1;
-                var ps = shader.uniforms.pointScale = tempScale;
-                shader.uniforms.projectionScale = Math.abs(this.worldTransform.a) * renderer.resolution;
-            }
-            var af = shader.uniforms.animationFrame = renderer.plugins.tilemap.tileAnim;
-            var layers = this.children;
-            for (var i = 0; i < layers.length; i++) {
-                layers[i].renderWebGL(renderer, this.useSquare);
-            }
-        }
-    }]);
-
-    return TiledTileLayer;
-}(PIXI.tilemap.CompositeRectTileLayer);
-
-exports.default = TiledTileLayer;
-
-/***/ }),
-
-/***/ 205:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var GLBuffer = PIXI.glCore.GLBuffer;
-var VertexArrayObject = PIXI.glCore.VertexArrayObject;
-
-var squareShaderFrag = "\nvarying vec2 vTextureCoord;\nvarying float vSize;\nvarying float vTextureId;\n\nuniform vec4 shadowColor;\nuniform sampler2D uSamplers[%count%];\nuniform vec2 uSamplerSize[%count%];\nuniform vec2 pointScale;\nuniform float alpha;\n\nvoid main(void){\n   float margin = 0.5 / vSize;\n   vec2 pointCoord = (gl_PointCoord - 0.5) * pointScale + 0.5;\n   vec2 clamped = vec2(clamp(pointCoord.x, margin, 1.0 - margin), clamp(pointCoord.y, margin, 1.0 - margin));\n   vec2 textureCoord = pointCoord * vSize + vTextureCoord;\n   float textureId = vTextureId;\n   vec4 color;\n   %forloop%\n   gl_FragColor = color * alpha;\n}\n";
-
-var squareShaderVert = "\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec2 aAnim;\nattribute float aTextureId;\nattribute float aSize;\n\nuniform mat3 projectionMatrix;\nuniform vec2 samplerSize;\nuniform vec2 animationFrame;\nuniform float projectionScale;\n\nvarying vec2 vTextureCoord;\nvarying float vSize;\nvarying float vTextureId;\n\nvoid main(void){\n   gl_Position = vec4((projectionMatrix * vec3(aVertexPosition + aSize * 0.5, 1.0)).xy, 0.0, 1.0);\n   gl_PointSize = aSize * projectionScale;\n   vTextureCoord = aTextureCoord + aAnim * animationFrame;\n   vTextureId = aTextureId;\n   vSize = aSize;\n}\n";
-var rectShaderFrag = "\nvarying vec2 vTextureCoord;\nvarying vec4 vFrame;\nvarying float vTextureId;\nuniform vec4 shadowColor;\nuniform sampler2D uSamplers[%count%];\nuniform vec2 uSamplerSize[%count%];\nuniform float alpha;\nvoid main(void){\n   vec2 textureCoord = clamp(vTextureCoord, vFrame.xy, vFrame.zw);\n   float textureId = floor(vTextureId + 0.5);\n   vec4 color;\n   %forloop%\n   gl_FragColor = color * alpha;\n}\n";
-
-var rectShaderVert = "\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aFrame;\nattribute vec2 aAnim;\nattribute float aTextureId;\nuniform mat3 projectionMatrix;\nuniform vec2 animationFrame;\nvarying vec2 vTextureCoord;\nvarying float vTextureId;\nvarying vec4 vFrame;\nvoid main(void){\n   gl_Position = vec4((projectionMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);\n   vec2 anim = aAnim * animationFrame;\n   vTextureCoord = aTextureCoord + anim;\n   vFrame = aFrame + vec4(anim, anim);\n   vTextureId = aTextureId;\n}\n";
-
-var TiledTileShader = function (_PIXI$tilemap$Tilemap) {
-    _inherits(TiledTileShader, _PIXI$tilemap$Tilemap);
-
-    function TiledTileShader(gl, maxTextures, useSquare) {
-        _classCallCheck(this, TiledTileShader);
-
-        var vert = useSquare ? squareShaderVert : rectShaderVert;
-        var frag = useSquare ? squareShaderFrag : rectShaderFrag;
-
-        var _this = _possibleConstructorReturn(this, (TiledTileShader.__proto__ || Object.getPrototypeOf(TiledTileShader)).call(this, gl, maxTextures, vert, PIXI.tilemap.shaderGenerator.generateFragmentSrc(maxTextures, frag)));
-
-        if (useSquare) {
-            _this.vertSize = 8;
-            _this.vertPerQuad = 1;
-            _this.anim = 5;
-            _this.textureId = 7;
-        } else {
-            _this.vertSize = 11;
-            _this.vertPerQuad = 4;
-            _this.anim = 8;
-            _this.textureId = 10;
-        }
-        _this.maxTextures = maxTextures;
-        _this.stride = _this.vertSize * 4;
-        PIXI.tilemap.shaderGenerator.fillSamplers(_this, _this.maxTextures);
-        return _this;
-    }
-
-    _createClass(TiledTileShader, [{
-        key: "createVao",
-        value: function createVao(renderer, vb) {
-            var gl = renderer.gl;
-            return renderer.createVao().addIndex(this.indexBuffer).addAttribute(vb, this.attributes.aVertexPosition, gl.FLOAT, false, this.stride, 0).addAttribute(vb, this.attributes.aTextureCoord, gl.FLOAT, false, this.stride, 2 * 4).addAttribute(vb, this.attributes.aFrame, gl.FLOAT, false, this.stride, 4 * 4).addAttribute(vb, this.attributes.aAnim, gl.FLOAT, false, this.stride, this.anim * 4).addAttribute(vb, this.attributes.aTextureId, gl.FLOAT, false, this.stride, this.textureId * 4);
-        }
-    }]);
-
-    return TiledTileShader;
-}(PIXI.tilemap.TilemapShader);
-
-exports.default = TiledTileShader;
-
-/***/ }),
-
-/***/ 206:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-/* A fallback implementation of AlphaFilter */
-
-var fragmentSrc = 'varying vec2 vTextureCoord;' + 'uniform sampler2D uSampler;' + 'uniform float uAlpha;' + 'void main(void)' + '{' + '   gl_FragColor = texture2D(uSampler, vTextureCoord) * uAlpha;' + '}';
-
-if (!PIXI.filters.AlphaFilter) {
-    var AlphaFilter = function (_PIXI$Filter) {
-        _inherits(AlphaFilter, _PIXI$Filter);
-
-        /**
-         * @param {number} [alpha=1] Amount of alpha from 0 to 1, where 0 is transparent
-         */
-        function AlphaFilter() {
-            var alpha = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1.0;
-
-            _classCallCheck(this, AlphaFilter);
-
-            var _this = _possibleConstructorReturn(this, (AlphaFilter.__proto__ || Object.getPrototypeOf(AlphaFilter)).call(this,
-            // vertex shader
-            null,
-            // fragment shader
-            fragmentSrc));
-
-            _this.alpha = alpha;
-            _this.glShaderKey = 'alpha';
-            return _this;
-        }
-        /**
-         * Coefficient for alpha multiplication
-         *
-         * @member {number}
-         * @default 1
-         */
-
-
-        _createClass(AlphaFilter, [{
-            key: 'alpha',
-            get: function get() {
-                return this.uniforms.uAlpha;
-            },
-            set: function set(value) // eslint-disable-line require-jsdoc
-            {
-                this.uniforms.uAlpha = value;
-            }
-        }]);
-
-        return AlphaFilter;
-    }(PIXI.Filter);
-
-    PIXI.filters.AlphaFilter = AlphaFilter;
-}
-
-/***/ }),
-
-/***/ 3:
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1785,8 +1585,7 @@ DataManager.isMapLoaded = function () {
 };
 
 /***/ }),
-
-/***/ 4:
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1797,8 +1596,14 @@ ImageManager.loadParserTileset = function (path, hue) {
         return this.loadEmptyBitmap();
     }
     var paths = path.split("/");
+    while (paths[0] === '..') {
+        paths.shift();
+    }
     var filename = paths[paths.length - 1];
     var realPath = "img/tilesets/" + filename;
+    if (paths[0] === 'img') {
+        realPath = paths.slice(0, -1).join('/') + '/' + filename;
+    }
 
     return this.loadNormalBitmap(realPath, hue);
 };
@@ -1808,15 +1613,20 @@ ImageManager.loadParserParallax = function (path, hue) {
         return this.loadEmptyBitmap();
     }
     var paths = path.split("/");
+    while (paths[0] === '..') {
+        paths.shift();
+    }
     var filename = paths[paths.length - 1];
     var realPath = "img/parallaxes/" + filename;
+    if (paths[0] === 'img') {
+        realPath = paths.slice(0, -1).join('/') + '/' + filename;
+    }
 
     return this.loadNormalBitmap(realPath, hue);
 };
 
 /***/ }),
-
-/***/ 5:
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1900,16 +1710,15 @@ TiledManager.checkLayerHidden = function (layerData) {
         ignore = _hideIgnoreFunctions[ignore] || [];
     }
     var keys = Object.keys(_hideFunctions);
-    var data = [false, false];
+    var data = false;
     for (var idx = 0; idx < keys.length; idx++) {
         if (ignore.indexOf(keys) !== -1) {
             continue;
         }
         if (layerData.properties && layerData.properties.hasOwnProperty(keys[idx])) {
-            data[0] = true;
-            data[1] = data[1] || _hideFunctions[keys[idx]](layerData);
+            data = data || _hideFunctions[keys[idx]](layerData);
         }
-        if (data[1]) {
+        if (data) {
             return data;
         }
     }
@@ -1948,8 +1757,7 @@ TiledManager.getFlagLocation = function (flagId) {
 };
 
 /***/ }),
-
-/***/ 6:
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1978,22 +1786,236 @@ Sprite_TiledPriorityTile.prototype.updateVisibility = function () {
                 this._transition = layer.properties.transition;
                 this._baseAlpha = layer.opacity;
                 this._minAlpha = Math.min(this._baseAlpha, layer.properties.minimumOpacity || 0);
-                this._isShown = !TiledManager.checkLayerHidden(layer)[1];
+                this._isShown = !TiledManager.checkLayerHidden(layer);
                 this._transitionPhase = this._isShown ? this._transition : 0;
             } else {
-                this._isShown = !TiledManager.checkLayerHidden(layer)[1];
+                this._isShown = !TiledManager.checkLayerHidden(layer);
                 this._transitionPhase = Math.max(0, Math.min(this._transition, this._transitionPhase + (this._isShown ? 1 : -1)));
             }
             visibility = this._minAlpha > 0 || this._transitionPhase > 0;
             this.opacity = 255 * ((this._baseAlpha - this._minAlpha) * (this._transitionPhase / this._transition) + this._minAlpha);
+        } else {
+            visibility = !TiledManager.checkLayerHidden(layer);
         }
     }
     this.visible = visibility;
 };
 
 /***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
 
-/***/ 8:
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/* A fallback implementation of AlphaFilter */
+
+var fragmentSrc = 'varying vec2 vTextureCoord;' + 'uniform sampler2D uSampler;' + 'uniform float uAlpha;' + 'void main(void)' + '{' + '   gl_FragColor = texture2D(uSampler, vTextureCoord) * uAlpha;' + '}';
+
+if (!PIXI.filters.AlphaFilter) {
+    var AlphaFilter = function (_PIXI$Filter) {
+        _inherits(AlphaFilter, _PIXI$Filter);
+
+        /**
+         * @param {number} [alpha=1] Amount of alpha from 0 to 1, where 0 is transparent
+         */
+        function AlphaFilter() {
+            var alpha = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1.0;
+
+            _classCallCheck(this, AlphaFilter);
+
+            var _this = _possibleConstructorReturn(this, (AlphaFilter.__proto__ || Object.getPrototypeOf(AlphaFilter)).call(this,
+            // vertex shader
+            null,
+            // fragment shader
+            fragmentSrc));
+
+            _this.alpha = alpha;
+            _this.glShaderKey = 'alpha';
+            return _this;
+        }
+        /**
+         * Coefficient for alpha multiplication
+         *
+         * @member {number}
+         * @default 1
+         */
+
+
+        _createClass(AlphaFilter, [{
+            key: 'alpha',
+            get: function get() {
+                return this.uniforms.uAlpha;
+            },
+            set: function set(value) // eslint-disable-line require-jsdoc
+            {
+                this.uniforms.uAlpha = value;
+            }
+        }]);
+
+        return AlphaFilter;
+    }(PIXI.Filter);
+
+    PIXI.filters.AlphaFilter = AlphaFilter;
+}
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _TiledTileShader = __webpack_require__(9);
+
+var _TiledTileShader2 = _interopRequireDefault(_TiledTileShader);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var TiledTileLayer = function (_PIXI$tilemap$Composi) {
+    _inherits(TiledTileLayer, _PIXI$tilemap$Composi);
+
+    function TiledTileLayer(zIndex, bitmaps, useSquare, texPerChild) {
+        _classCallCheck(this, TiledTileLayer);
+
+        return _possibleConstructorReturn(this, (TiledTileLayer.__proto__ || Object.getPrototypeOf(TiledTileLayer)).call(this, zIndex, bitmaps, useSquare, texPerChild));
+    }
+
+    _createClass(TiledTileLayer, [{
+        key: "renderWebGL",
+        value: function renderWebGL(renderer) {
+            var gl = renderer.gl;
+            if (!this.tiledTileShader) {
+                this.tiledTileShader = new _TiledTileShader2.default(gl, renderer.plugins.tilemap.maxTextures, this.useSquare);
+            }
+            var alpha = this.alpha;
+            if (this.transition) {
+                this.transitionStep = Math.max(0, Math.min(this.transition, this.transitionStep + (this.isShown ? 1 : -1)));
+                alpha -= this.minAlpha;
+                alpha *= this.transitionStep / this.transition;
+                alpha += this.minAlpha;
+            }
+            //var shader = renderer.plugins.tilemap.getShader(this.useSquare);
+            var shader = this.tiledTileShader;
+            renderer.setObjectRenderer(renderer.plugins.tilemap);
+            renderer.bindShader(shader);
+            this._globalMat = this._globalMat || new PIXI.Matrix();
+            renderer._activeRenderTarget.projectionMatrix.copy(this._globalMat).append(this.worldTransform);
+            shader.uniforms.projectionMatrix = this._globalMat.toArray(true);
+            shader.uniforms.shadowColor = this.shadowColor;
+            shader.uniforms.alpha = alpha;
+            if (this.useSquare) {
+                var tempScale = this._tempScale = this._tempScale || [0, 0];
+                tempScale[0] = this._globalMat.a >= 0 ? 1 : -1;
+                tempScale[1] = this._globalMat.d < 0 ? 1 : -1;
+                var ps = shader.uniforms.pointScale = tempScale;
+                shader.uniforms.projectionScale = Math.abs(this.worldTransform.a) * renderer.resolution;
+            }
+            var af = shader.uniforms.animationFrame = renderer.plugins.tilemap.tileAnim;
+            var layers = this.children;
+            for (var i = 0; i < layers.length; i++) {
+                layers[i].renderWebGL(renderer, this.useSquare);
+            }
+        }
+    }]);
+
+    return TiledTileLayer;
+}(PIXI.tilemap.CompositeRectTileLayer);
+
+exports.default = TiledTileLayer;
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var GLBuffer = PIXI.glCore.GLBuffer;
+var VertexArrayObject = PIXI.glCore.VertexArrayObject;
+
+var squareShaderFrag = "\nvarying vec2 vTextureCoord;\nvarying float vSize;\nvarying float vTextureId;\n\nuniform vec4 shadowColor;\nuniform sampler2D uSamplers[%count%];\nuniform vec2 uSamplerSize[%count%];\nuniform vec2 pointScale;\nuniform float alpha;\n\nvoid main(void){\n   float margin = 0.5 / vSize;\n   vec2 pointCoord = (gl_PointCoord - 0.5) * pointScale + 0.5;\n   vec2 clamped = vec2(clamp(pointCoord.x, margin, 1.0 - margin), clamp(pointCoord.y, margin, 1.0 - margin));\n   vec2 textureCoord = pointCoord * vSize + vTextureCoord;\n   float textureId = vTextureId;\n   vec4 color;\n   %forloop%\n   gl_FragColor = color * alpha;\n}\n";
+
+var squareShaderVert = "\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec2 aAnim;\nattribute float aTextureId;\nattribute float aSize;\n\nuniform mat3 projectionMatrix;\nuniform vec2 samplerSize;\nuniform vec2 animationFrame;\nuniform float projectionScale;\n\nvarying vec2 vTextureCoord;\nvarying float vSize;\nvarying float vTextureId;\n\nvoid main(void){\n   gl_Position = vec4((projectionMatrix * vec3(aVertexPosition + aSize * 0.5, 1.0)).xy, 0.0, 1.0);\n   gl_PointSize = aSize * projectionScale;\n   vTextureCoord = aTextureCoord + aAnim * animationFrame;\n   vTextureId = aTextureId;\n   vSize = aSize;\n}\n";
+var rectShaderFrag = "\nvarying vec2 vTextureCoord;\nvarying vec4 vFrame;\nvarying float vTextureId;\nuniform vec4 shadowColor;\nuniform sampler2D uSamplers[%count%];\nuniform vec2 uSamplerSize[%count%];\nuniform float alpha;\nvoid main(void){\n   vec2 textureCoord = clamp(vTextureCoord, vFrame.xy, vFrame.zw);\n   float textureId = floor(vTextureId + 0.5);\n   vec4 color;\n   %forloop%\n   gl_FragColor = color * alpha;\n}\n";
+
+var rectShaderVert = "\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aFrame;\nattribute vec2 aAnim;\nattribute float aTextureId;\nuniform mat3 projectionMatrix;\nuniform vec2 animationFrame;\nvarying vec2 vTextureCoord;\nvarying float vTextureId;\nvarying vec4 vFrame;\nvoid main(void){\n   gl_Position = vec4((projectionMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);\n   vec2 anim = aAnim * animationFrame;\n   vTextureCoord = aTextureCoord + anim;\n   vFrame = aFrame + vec4(anim, anim);\n   vTextureId = aTextureId;\n}\n";
+
+var TiledTileShader = function (_PIXI$tilemap$Tilemap) {
+    _inherits(TiledTileShader, _PIXI$tilemap$Tilemap);
+
+    function TiledTileShader(gl, maxTextures, useSquare) {
+        _classCallCheck(this, TiledTileShader);
+
+        var vert = useSquare ? squareShaderVert : rectShaderVert;
+        var frag = useSquare ? squareShaderFrag : rectShaderFrag;
+
+        var _this = _possibleConstructorReturn(this, (TiledTileShader.__proto__ || Object.getPrototypeOf(TiledTileShader)).call(this, gl, maxTextures, vert, PIXI.tilemap.shaderGenerator.generateFragmentSrc(maxTextures, frag)));
+
+        if (useSquare) {
+            _this.vertSize = 8;
+            _this.vertPerQuad = 1;
+            _this.anim = 5;
+            _this.textureId = 7;
+        } else {
+            _this.vertSize = 11;
+            _this.vertPerQuad = 4;
+            _this.anim = 8;
+            _this.textureId = 10;
+        }
+        _this.maxTextures = maxTextures;
+        _this.stride = _this.vertSize * 4;
+        PIXI.tilemap.shaderGenerator.fillSamplers(_this, _this.maxTextures);
+        return _this;
+    }
+
+    _createClass(TiledTileShader, [{
+        key: "createVao",
+        value: function createVao(renderer, vb) {
+            var gl = renderer.gl;
+            return renderer.createVao().addIndex(this.indexBuffer).addAttribute(vb, this.attributes.aVertexPosition, gl.FLOAT, false, this.stride, 0).addAttribute(vb, this.attributes.aTextureCoord, gl.FLOAT, false, this.stride, 2 * 4).addAttribute(vb, this.attributes.aFrame, gl.FLOAT, false, this.stride, 4 * 4).addAttribute(vb, this.attributes.aAnim, gl.FLOAT, false, this.stride, this.anim * 4).addAttribute(vb, this.attributes.aTextureId, gl.FLOAT, false, this.stride, this.textureId * 4);
+        }
+    }]);
+
+    return TiledTileShader;
+}(PIXI.tilemap.TilemapShader);
+
+exports.default = TiledTileShader;
+
+/***/ }),
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2078,6 +2100,7 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
+    this._convertChunks();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -2085,6 +2108,33 @@ Game_Map.prototype._setupTiled = function () {
     this._setupMapLevelChange();
     this._setupTileFlags();
     this._setupTiledEvents();
+};
+
+Game_Map.prototype._convertChunks = function () {
+    var _this = this;
+
+    var _loop = function _loop(idx) {
+        var layerData = _this.tiledData.layers[idx];
+        if (!layerData.data && !!layerData.chunks) {
+            layerData.data = new Array(_this.width() * _this.height());
+            layerData.data.fill(0);
+            layerData.chunks.forEach(function (chunk) {
+                for (var _i = 0; _i < chunk.data.length; _i++) {
+                    var x = chunk.x + _i % chunk.width;
+                    var y = chunk.y + Math.floor(_i / chunk.width);
+                    if (x >= layerData.x + _this.width() || y >= layerData.x + _this.width()) {
+                        continue;
+                    }
+                    var realX = x + y * _this.width();
+                    layerData.data[realX] = chunk.data[_i];
+                }
+            });
+        }
+    };
+
+    for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
+        _loop(idx);
+    }
 };
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -2183,21 +2233,21 @@ Game_Map.prototype._setupCollisionFull = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.collision) {
+        var _layerData = this.tiledData.layers[idx];
+        if (!_layerData.properties || !_layerData.properties.collision) {
             continue;
         }
 
-        if (layerData.properties.collision !== "full" && layerData.properties.collision !== "up-left" && layerData.properties.collision !== "up-right" && layerData.properties.collision !== "down-left" && layerData.properties.collision !== "down-right" && layerData.properties.collision !== "tiles") {
+        if (_layerData.properties.collision !== "full" && _layerData.properties.collision !== "up-left" && _layerData.properties.collision !== "up-right" && _layerData.properties.collision !== "down-left" && _layerData.properties.collision !== "down-right" && _layerData.properties.collision !== "tiles") {
             continue;
         }
 
-        var level = parseInt(layerData.properties.level) || 0;
+        var level = parseInt(_layerData.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(_layerData)) {
             layerId = idx;
             this._collisionMapLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['collisionMap']);
@@ -2216,8 +2266,8 @@ Game_Map.prototype._setupCollisionFull = function () {
                 if (this.isHalfTile()) {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
-                if (!!layerData.data[x]) {
-                    switch (layerData.properties.collision) {
+                if (!!_layerData.data[x]) {
+                    switch (_layerData.properties.collision) {
                         case "full":
                             ids.push(realX);
                             if (this.isHalfTile()) {
@@ -2237,7 +2287,7 @@ Game_Map.prototype._setupCollisionFull = function () {
                             ids.push(realX + width + 1);
                             break;
                         case "tiles":
-                            var tileId = layerData.data[x];
+                            var tileId = _layerData.data[x];
                             var tileset = this._getTileset(tileId);
                             if (tileset && tileset.tileproperties) {
                                 var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -2320,44 +2370,44 @@ Game_Map.prototype._setupCollisionArrow = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.collision) {
+        var _layerData2 = this.tiledData.layers[idx];
+        if (!_layerData2.properties || !_layerData2.properties.collision) {
             continue;
         }
 
-        if (layerData.properties.collision !== "arrow" && layerData.properties.collision !== "tiles") {
+        if (_layerData2.properties.collision !== "arrow" && _layerData2.properties.collision !== "tiles") {
             continue;
         }
 
-        if (!layerData.properties.arrowImpassable && layerData.properties.collision !== "tiles") {
+        if (!_layerData2.properties.arrowImpassable && _layerData2.properties.collision !== "tiles") {
             continue;
         }
 
-        if (layerData.properties.arrowImpassable) {
+        if (_layerData2.properties.arrowImpassable) {
 
-            if (layerData.properties.arrowImpassable === "down") {
+            if (_layerData2.properties.arrowImpassable === "down") {
                 bit = 1;
             }
 
-            if (layerData.properties.arrowImpassable === "left") {
+            if (_layerData2.properties.arrowImpassable === "left") {
                 bit = 2;
             }
 
-            if (layerData.properties.arrowImpassable === "right") {
+            if (_layerData2.properties.arrowImpassable === "right") {
                 bit = 4;
             }
 
-            if (layerData.properties.arrowImpassable === "up") {
+            if (_layerData2.properties.arrowImpassable === "up") {
                 bit = 8;
             }
         }
 
-        var level = parseInt(layerData.properties.level) || 0;
+        var level = parseInt(_layerData2.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(_layerData2)) {
             layerId = idx;
             this._arrowCollisionMapLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['arrowCollisionMap']);
@@ -2377,11 +2427,11 @@ Game_Map.prototype._setupCollisionArrow = function () {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!layerData.data[x]) {
+                if (!!_layerData2.data[x]) {
                     var realBit = bit;
-                    if (layerData.properties.collision === "tiles") {
+                    if (_layerData2.properties.collision === "tiles") {
                         realBit = 0;
-                        var tileId = layerData.data[x];
+                        var tileId = _layerData2.data[x];
                         var tileset = this._getTileset(tileId);
                         if (tileset && tileset.tileproperties) {
                             var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -2438,17 +2488,17 @@ Game_Map.prototype._setupRegion = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.regionId) {
+        var _layerData3 = this.tiledData.layers[idx];
+        if (!_layerData3.properties || !_layerData3.properties.regionId) {
             continue;
         }
 
-        var level = parseInt(layerData.properties.level) || 0;
+        var level = parseInt(_layerData3.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(_layerData3)) {
             layerId = idx;
             this._regionsLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['regions']);
@@ -2469,12 +2519,12 @@ Game_Map.prototype._setupRegion = function () {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!layerData.data[x]) {
+                if (!!_layerData3.data[x]) {
                     var regionId = 0;
-                    if (layerData.properties.regionId > -1) {
-                        regionId = parseInt(layerData.properties.regionId);
+                    if (_layerData3.properties.regionId > -1) {
+                        regionId = parseInt(_layerData3.properties.regionId);
                     } else {
-                        var tileId = layerData.data[x];
+                        var tileId = _layerData3.data[x];
                         var tileset = this._getTileset(tileId);
                         if (tileset && tileset.tileproperties) {
                             var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -2482,8 +2532,8 @@ Game_Map.prototype._setupRegion = function () {
                                 regionId = parseInt(tileData.regionId);
                             }
                         }
-                        if (layerData.properties.regionOffset) {
-                            regionId += layerData.properties.regionOffset;
+                        if (_layerData3.properties.regionOffset) {
+                            regionId += _layerData3.properties.regionOffset;
                         }
                     }
                     _regionMap[realX] = regionId;
@@ -2523,16 +2573,16 @@ Game_Map.prototype._setupMapLevelChange = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.hasOwnProperty('toLevel')) {
+        var _layerData4 = this.tiledData.layers[idx];
+        if (!_layerData4.properties || !_layerData4.properties.hasOwnProperty('toLevel')) {
             continue;
         }
 
-        var level = parseInt(layerData.properties.level) || 0;
+        var level = parseInt(_layerData4.properties.level) || 0;
         this._initializeMapLevel(level);
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(_layerData4)) {
             layerId = idx;
             this._mapLevelChangeLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['mapLevelChange']);
@@ -2549,12 +2599,12 @@ Game_Map.prototype._setupMapLevelChange = function () {
                 var x = _step6.value;
 
                 var realX = x;
-                var toLevel = parseInt(layerData.properties.toLevel);
+                var toLevel = parseInt(_layerData4.properties.toLevel);
                 if (this.isHalfTile()) {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!layerData.data[x]) {
+                if (!!_layerData4.data[x]) {
                     levelChangeMap[realX] = toLevel;
                     if (this.isHalfTile()) {
                         levelChangeMap[realX + 1] = toLevel;
@@ -2592,16 +2642,16 @@ Game_Map.prototype._setupPositionHeightChange = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.hasOwnProperty('floorHeight')) {
+        var _layerData5 = this.tiledData.layers[idx];
+        if (!_layerData5.properties || !_layerData5.properties.hasOwnProperty('floorHeight')) {
             continue;
         }
 
-        var level = parseInt(layerData.properties.level) || 0;
+        var level = parseInt(_layerData5.properties.level) || 0;
         this._initializeMapLevel(level);
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(_layerData5)) {
             layerId = idx;
             this._positionHeightChangeLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['positionHeightChange']);
@@ -2618,12 +2668,12 @@ Game_Map.prototype._setupPositionHeightChange = function () {
                 var x = _step7.value;
 
                 var realX = x;
-                var toLevel = parseInt(layerData.properties.floorHeight);
+                var toLevel = parseInt(_layerData5.properties.floorHeight);
                 if (this.isHalfTile()) {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!layerData.data[x]) {
+                if (!!_layerData5.data[x]) {
                     positionHeightChangeMap[realX] = toLevel;
                     if (this.isHalfTile()) {
                         positionHeightChangeMap[realX + 1] = toLevel;
@@ -2661,17 +2711,17 @@ Game_Map.prototype._setupTileFlags = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var layerData = this.tiledData.layers[idx];
-        if (!layerData.properties || !layerData.properties.tileFlags) {
+        var _layerData6 = this.tiledData.layers[idx];
+        if (!_layerData6.properties || !_layerData6.properties.tileFlags) {
             continue;
         }
 
-        var level = parseInt(layerData.properties.level) || 0;
+        var level = parseInt(_layerData6.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(layerData)) {
+        if (TiledManager.hasHideProperties(_layerData6)) {
             layerId = idx;
             this._tileFlagsLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['tileFlags']);
@@ -2692,9 +2742,9 @@ Game_Map.prototype._setupTileFlags = function () {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!layerData.data[x]) {
+                if (!!_layerData6.data[x]) {
                     var tileFlags = 0;
-                    var tileId = layerData.data[x];
+                    var tileId = _layerData6.data[x];
                     var tileset = this._getTileset(tileId);
                     if (tileset && tileset.tileproperties) {
                         var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -2738,7 +2788,7 @@ Game_Map.prototype._getTileFlags = function (tileData) {
                 group = _TiledManager$getFlag2[0],
                 bit = _TiledManager$getFlag2[1];
 
-            for (var _i = flags.length; _i <= group; _i++) {
+            for (var _i2 = flags.length; _i2 <= group; _i2++) {
                 flags.push(0);
             }
             flags[group] |= bit;
@@ -2749,11 +2799,11 @@ Game_Map.prototype._getTileFlags = function (tileData) {
 
 Game_Map.prototype._combineFlags = function (source, target) {
     source = source ? source.slice(0) : [];
-    for (var _i2 = 0; _i2 < target.length; _i2++) {
-        if (!source.length <= _i2) {
-            source.push(_i2);
+    for (var _i3 = 0; _i3 < target.length; _i3++) {
+        if (!source.length <= _i3) {
+            source.push(_i3);
         }
-        source[_i2] |= target[_i2];
+        source[_i3] |= target[_i3];
     }
     return source;
 };
@@ -2765,9 +2815,9 @@ Game_Map.prototype._setupTiledEvents = function () {
 
     try {
         for (var _iterator9 = this.tiledData.layers[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
-            var layerData = _step9.value;
+            var _layerData7 = _step9.value;
 
-            if (layerData.type !== "objectgroup") {
+            if (_layerData7.type !== "objectgroup") {
                 continue;
             }
 
@@ -2776,7 +2826,7 @@ Game_Map.prototype._setupTiledEvents = function () {
             var _iteratorError10 = undefined;
 
             try {
-                for (var _iterator10 = layerData.objects[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+                for (var _iterator10 = _layerData7.objects[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
                     var object = _step10.value;
 
                     if (!object.properties) {
@@ -2897,9 +2947,9 @@ Game_Map.prototype.regionId = function (x, y) {
     if (regionLayer && regionLayer.length > 0) {
         for (var idx = 0; idx < regionLayer.length; idx++) {
             var layerId = regionLayer[idx];
-            var layerData = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(layerData, 'regions');
-            if (!hideData[1]) {
+            var _layerData8 = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(_layerData8, 'regions');
+            if (!hideData) {
                 if (allIds) {
                     regionValues.push(regionMap[layerId][index]);
                 } else {
@@ -2937,9 +2987,9 @@ Game_Map.prototype.checkPassage = function (x, y, bit) {
     } else if (arrowLayer && arrowLayer.length > 0) {
         for (var idx = 0; idx < arrowLayer.length; idx++) {
             var layerId = arrowLayer[idx];
-            var layerData = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
-            if (!hideData[1]) {
+            var _layerData9 = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(_layerData9, 'collisions');
+            if (!hideData) {
                 arrowValue &= regionMap[layerId][index];
             }
         }
@@ -2991,9 +3041,9 @@ Game_Map.prototype.isPassable = function (x, y, d) {
     } else if (collisionLayer && collisionLayer.length > 0) {
         for (var idx = 0; idx < collisionLayer.length; idx++) {
             var layerId = collisionLayer[idx];
-            var layerData = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
-            if (!hideData[1]) {
+            var _layerData10 = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(_layerData10, 'collisions');
+            if (!hideData) {
                 collisionValue |= collisionMap[layerId][index];
             }
         }
@@ -3027,9 +3077,9 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     if (mapLevelChangeLayer.length > 0) {
         for (var idx = 0; idx < mapLevelChangeLayer.length; idx++) {
             var layerId = mapLevelChangeLayer[idx];
-            var layerData = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(layerData, 'levelChanges');
-            if (!hideData[1]) {
+            var _layerData11 = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(_layerData11, 'levelChanges');
+            if (!hideData) {
                 mapLevelChangeValue = mapLevelChange[layerId][index];
             }
         }
@@ -3049,9 +3099,9 @@ Game_Map.prototype.checkPositionHeight = function (x, y) {
     if (positionHeightChangeLayer.length > 0) {
         for (var idx = 0; idx < positionHeightChangeLayer.length; idx++) {
             var layerId = positionHeightChangeLayer[idx];
-            var layerData = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(layerData, 'positionHeightChanges');
-            if (!hideData[1]) {
+            var _layerData12 = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(_layerData12, 'positionHeightChanges');
+            if (!hideData) {
                 positionHeightChangeValue = positionHeightChange[layerId][index];
             }
         }
@@ -3076,9 +3126,9 @@ Game_Map.prototype.getTileFlags = function (x, y) {
     } else if (tileFlagsLayer && tileFlagsLayer.length > 0) {
         for (var idx = 0; idx < tileFlagsLayer.length; idx++) {
             var layerId = tileFlagsLayer[idx];
-            var layerData = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(layerData, 'tileFlags');
-            if (!hideData[1] && tileFlags[layerId][index]) {
+            var _layerData13 = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(_layerData13, 'tileFlags');
+            if (!hideData && tileFlags[layerId][index]) {
                 tileFlagsValue[i] = this._combineFlags(tileFlagsValue[i], tileFlags[layerId][index]);
             }
         }
@@ -3330,7 +3380,7 @@ Game_Map.prototype.getLayerProperties = function () {
     var layerProperties = {};
     this.tiledData.layers.forEach(function (layerData, i) {
         if (layerData && layerData.properties) {
-            if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData, 'collisions')[1]) {
+            if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData, 'collisions')) {
                 layerProperties[i] = Object.assign({}, layerData.properties);
             }
         }
@@ -3339,7 +3389,7 @@ Game_Map.prototype.getLayerProperties = function () {
 };
 
 Game_Map.prototype.getTileProperties = function (x, y) {
-    var _this = this;
+    var _this2 = this;
 
     var layer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : -1;
     var ignoreHidden = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
@@ -3359,8 +3409,8 @@ Game_Map.prototype.getTileProperties = function (x, y) {
     var tileProperties = {};
     this.tiledData.layers.forEach(function (layerData, i) {
         if (layerData && layerData.properties) {
-            if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData)[1]) {
-                var props = _this.getTileProperties(x, y, i);
+            if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
+                var props = _this2.getTileProperties(x, y, i);
                 if (Object.keys(props).length > 0) {
                     tileProperties[i] = props;
                 }
@@ -3371,8 +3421,7 @@ Game_Map.prototype.getTileProperties = function (x, y) {
 };
 
 /***/ }),
-
-/***/ 9:
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3429,7 +3478,129 @@ Game_CharacterBase.prototype.locationHeight = function () {
     return this._locationHeight || 0;
 };
 
-/***/ })
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
 
-/******/ });
+"use strict";
+
+
+var _checkEventTriggerHere = Game_Player.prototype.checkEventTriggerHere;
+Game_Player.prototype.checkEventTriggerHere = function (triggers) {
+    _checkEventTriggerHere.call(this, triggers);
+    this._checkMapLevelChangingHere();
+};
+
+Game_Player.prototype._checkMapLevelChangingHere = function () {
+    $gameMap.checkMapLevelChanging(this.x, this.y);
+};
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _update = Sprite_Character.prototype.update;
+Sprite_Character.prototype.update = function () {
+	_update.call(this);
+	this.locationHeight = this._character.locationHeight();
+};
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _TiledTilemap = __webpack_require__(0);
+
+var _initialize = Spriteset_Battle.prototype.initialize;
+Spriteset_Battle.prototype.initialize = function () {
+    this._parallaxContainers = {};
+    _initialize.call(this);
+};
+
+var _createTilemap = Spriteset_Map.prototype.createTilemap;
+Spriteset_Map.prototype.createTilemap = function () {
+    if (!$gameMap.isTiledMap()) {
+        _createTilemap.call(this);
+        return;
+    }
+    this._tilemap = new _TiledTilemap.TiledTilemap($gameMap.tiledData);
+    this._tilemap.horizontalWrap = $gameMap.isLoopHorizontal();
+    this._tilemap.verticalWrap = $gameMap.isLoopVertical();
+    this.loadTileset();
+    this._baseSprite.addChild(this._tilemap);
+};
+
+var _loadTileset = Spriteset_Map.prototype.loadTileset;
+Spriteset_Map.prototype.loadTileset = function () {
+    if (!$gameMap.isTiledMap()) {
+        _loadTileset.call(this);
+        return;
+    }
+
+    var i = 0;
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+        for (var _iterator = $gameMap.tiledData.tilesets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+            var tileset = _step.value;
+
+            if (tileset.properties && tileset.properties.ignoreLoading) {
+                continue;
+            }
+            this._tilemap.bitmaps[i] = ImageManager.loadParserTileset(tileset.image, 0);
+            i++;
+        }
+    } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion && _iterator.return) {
+                _iterator.return();
+            }
+        } finally {
+            if (_didIteratorError) {
+                throw _iteratorError;
+            }
+        }
+    }
+
+    this._tilemap.refreshTileset();
+    this._tileset = $gameMap.tiledData.tilesets;
+};
+
+var _update = Spriteset_Map.prototype.update;
+Spriteset_Map.prototype.update = function () {
+    _update.call(this);
+    this._updateHideOnLevel();
+    this._updateHideOnSpecial();
+    this._tilemap.updateParallax();
+};
+
+Spriteset_Map.prototype.updateTileset = function () {
+    if (this._tileset !== $gameMap.tiledData.tilesets) {
+        this.loadTileset();
+    }
+};
+
+Spriteset_Map.prototype._updateHideOnLevel = function () {
+    this._tilemap.hideOnLevel($gameMap.currentMapLevel);
+};
+
+Spriteset_Map.prototype._updateHideOnSpecial = function () {
+    if ($gamePlayer && $gameMap) {
+        this._tilemap.hideOnSpecial();
+    }
+};
+
+/***/ })
+/******/ ]);
 //# sourceMappingURL=YED_Tiled.js.map

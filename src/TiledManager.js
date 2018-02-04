@@ -68,16 +68,15 @@ TiledManager.checkLayerHidden = function(layerData, ignore = []) {
         ignore = _hideIgnoreFunctions[ignore] || []
     }
     let keys = Object.keys(_hideFunctions);
-    let data = [false, false];
+    let data = false;
     for(let idx = 0; idx < keys.length; idx++) {
         if(ignore.indexOf(keys) !== -1) {
             continue;
         }
         if(layerData.properties && layerData.properties.hasOwnProperty(keys[idx])) {
-            data[0] = true;
-            data[1] = data[1] || _hideFunctions[keys[idx]](layerData);
+            data = data || _hideFunctions[keys[idx]](layerData);
         }
-        if(data[1]) {
+        if(data) {
             return data;
         }
     }

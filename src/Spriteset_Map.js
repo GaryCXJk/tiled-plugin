@@ -1,5 +1,11 @@
 import { TiledTilemap } from "./TiledTilemap";
 
+let _initialize = Spriteset_Battle.prototype.initialize
+Spriteset_Battle.prototype.initialize = function() {
+    this._parallaxContainers = {};
+    _initialize.call(this);
+}
+
 let _createTilemap = Spriteset_Map.prototype.createTilemap;
 Spriteset_Map.prototype.createTilemap = function () {
     if (!$gameMap.isTiledMap()) {
@@ -22,6 +28,9 @@ Spriteset_Map.prototype.loadTileset = function () {
 
     let i = 0;
     for (let tileset of $gameMap.tiledData.tilesets) {
+        if(tileset.properties && tileset.properties.ignoreLoading) {
+            continue;
+        }
         this._tilemap.bitmaps[i] = ImageManager.loadParserTileset(tileset.image, 0);
         i++;
     }
@@ -34,6 +43,7 @@ Spriteset_Map.prototype.update = function () {
     _update.call(this);
     this._updateHideOnLevel();
     this._updateHideOnSpecial();
+    this._tilemap.updateParallax();
 };
 
 Spriteset_Map.prototype.updateTileset = function () {

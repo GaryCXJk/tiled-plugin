@@ -75,6 +75,7 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
+    this._convertChunks();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -83,6 +84,27 @@ Game_Map.prototype._setupTiled = function () {
     this._setupTileFlags();
     this._setupTiledEvents();
 };
+
+Game_Map.prototype._convertChunks = function() {
+    for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
+        let layerData = this.tiledData.layers[idx];
+        if(!layerData.data && !!layerData.chunks) {
+            layerData.data = new Array(this.width() * this.height());
+            layerData.data.fill(0);
+            layerData.chunks.forEach(chunk => {
+                for(let i = 0; i < chunk.data.length; i++) {
+                    let x = chunk.x + (i % chunk.width);
+                    let y = chunk.y + Math.floor(i / chunk.width);
+                    if(x >= layerData.x + this.width() || y >= layerData.x + this.width()) {
+                        continue;
+                    }
+                    let realX = x + y * this.width();
+                    layerData.data[realX] = chunk.data[i];
+                }
+            })
+        }
+    }
+}
 
 Game_Map.prototype._initializeMapLevel = function (id) {
     if (!!this._collisionMap[id]) {
@@ -686,7 +708,7 @@ Game_Map.prototype.regionId = function (x, y, allIds = false) {
             let layerId = regionLayer[idx];
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'regions');
-            if(!hideData[1]) {
+            if(!hideData) {
                 if(allIds) {
                     regionValues.push(regionMap[layerId][index]);
                 } else {
@@ -723,7 +745,7 @@ Game_Map.prototype.checkPassage = function (x, y, bit, render = false, level = f
             let layerId = arrowLayer[idx];
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
-            if(!hideData[1]) {
+            if(!hideData) {
                 arrowValue&= regionMap[layerId][index];
             }
         }
@@ -771,7 +793,7 @@ Game_Map.prototype.isPassable = function (x, y, d, render = false, level = false
             let layerId = collisionLayer[idx];
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
-            if(!hideData[1]) {
+            if(!hideData) {
                 collisionValue|= collisionMap[layerId][index];
             }
         }
@@ -804,7 +826,7 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
             let layerId = mapLevelChangeLayer[idx];
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'levelChanges');
-            if(!hideData[1]) {
+            if(!hideData) {
                 mapLevelChangeValue = mapLevelChange[layerId][index];
             }
         }
@@ -826,7 +848,7 @@ Game_Map.prototype.checkPositionHeight = function (x, y) {
             let layerId = positionHeightChangeLayer[idx];
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'positionHeightChanges');
-            if(!hideData[1]) {
+            if(!hideData) {
                 positionHeightChangeValue = positionHeightChange[layerId][index];
             }
         }
@@ -850,7 +872,7 @@ Game_Map.prototype.getTileFlags = function (x, y, render = false, level = false)
             let layerId = tileFlagsLayer[idx];
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'tileFlags');
-            if(!hideData[1] && tileFlags[layerId][index]) {
+            if(!hideData && tileFlags[layerId][index]) {
                 tileFlagsValue[i] = this._combineFlags(tileFlagsValue[i], tileFlags[layerId][index])
             }
         }
@@ -1042,7 +1064,7 @@ Game_Map.prototype.getLayerProperties = function(layer = -1, ignoreHidden = true
 	let layerProperties = {};
 	this.tiledData.layers.forEach((layerData, i) => {
 		if(layerData && layerData.properties) {
-            if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData, 'collisions')[1]) {
+            if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData, 'collisions')) {
                 layerProperties[i] = Object.assign({}, layerData.properties);
             }
 		}
@@ -1066,7 +1088,7 @@ Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden =
 	let tileProperties = {};
 	this.tiledData.layers.forEach((layerData, i) => {
 		if(layerData && layerData.properties) {
-            if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData)[1]) {
+            if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
                 let props = this.getTileProperties(x, y, i);
                 if(Object.keys(props).length > 0) {
                     tileProperties[i] = props;
