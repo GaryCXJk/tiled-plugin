@@ -43,6 +43,11 @@
  * @desc Get and set map level by variable
  * @default 0
  * 
+ * @param Constrain Events to Grid
+ * @desc Whether events should be constrained to a grid or not.
+ * @default true
+ * @type boolean
+ * 
  * @param Position Height - Always Check On Move Update
  * @desc Whether the position height should update on every move tick or just the final
  * @default false

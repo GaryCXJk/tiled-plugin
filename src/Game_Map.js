@@ -1,4 +1,5 @@
 // Constants
+let pluginParams = PluginManager.parameters("YED_Tiled");
 
 Object.defineProperty(Game_Map.prototype, 'tiledData', {
     get: function () {
@@ -9,7 +10,6 @@ Object.defineProperty(Game_Map.prototype, 'tiledData', {
 
 Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
     get: function () {
-        let pluginParams = PluginManager.parameters("YED_Tiled");
         let varID = parseInt(pluginParams["Map Level Variable"]);
         if (!varID) {
             return this._currentMapLevel;
@@ -18,7 +18,6 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
         }
     },
     set: function (value) {
-        let pluginParams = PluginManager.parameters("YED_Tiled");
         let varID = parseInt(pluginParams["Map Level Variable"]);
         if (!varID) {
             this._currentMapLevel = value;
@@ -622,29 +621,42 @@ Game_Map.prototype._setupTiledEvents = function () {
                 continue;
             }
 
-            if (!object.properties.eventId) {
+            if (!object.properties.eventId && !object.properties.vehicle) {
                 continue;
             }
 
-            let eventId = parseInt(object.properties.eventId);
-            let event = this._events[eventId];
+            let event;
+
+            if(!!object.properties.vehicle) {
+                event = this.vehicle(object.properties.vehicle);
+            } else {
+                let eventId = parseInt(object.properties.eventId);
+                event = this._events[eventId];
+            }
             if (!event) {
                 continue;
             }
-            let x = Math.floor(object.x / this.tileWidth());
-            let y = Math.floor(object.y / this.tileHeight());
+            let x = object.x / this.tileWidth();
+            let y = object.y / this.tileHeight();
+            if(pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                x = Math.floor(x);
+                y = Math.floor(y);
+            }
             if (this.isHalfTile()) {
                 x += 1;
                 y += 1;
             }
-            event.locate(x, y);
+            if(!!object.properties.vehicle) {
+                event.setLocation(this.mapId(), x, y);
+            } else {
+                event.locate(x, y);
+            }
 			event._tiledProperties = object.properties;
         }
     }
 };
 
 Game_Map.prototype.isHalfTile = function () {
-    let pluginParams = PluginManager.parameters("YED_Tiled");
     return pluginParams["Half-tile movement"].toLowerCase() === "true";
 };
 
@@ -746,7 +758,7 @@ Game_Map.prototype.checkPassage = function (x, y, bit, render = false, level = f
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
             if(!hideData) {
-                arrowValue&= regionMap[layerId][index];
+                arrowValue&= arrows[layerId][index];
             }
         }
     }
@@ -873,7 +885,7 @@ Game_Map.prototype.getTileFlags = function (x, y, render = false, level = false)
             let layerData = this.tiledData.layers[layerId];
             let hideData = TiledManager.checkLayerHidden(layerData, 'tileFlags');
             if(!hideData && tileFlags[layerId][index]) {
-                tileFlagsValue[i] = this._combineFlags(tileFlagsValue[i], tileFlags[layerId][index])
+                tileFlagsValue = this._combineFlags(tileFlagsValue, tileFlags[layerId][index])
             }
         }
     }

@@ -43,6 +43,11 @@
  * @desc Get and set map level by variable
  * @default 0
  * 
+ * @param Constrain Events to Grid
+ * @desc Whether events should be constrained to a grid or not.
+ * @default true
+ * @type boolean
+ * 
  * @param Position Height - Always Check On Move Update
  * @desc Whether the position height should update on every move tick or just the final
  * @default false
@@ -2024,6 +2029,7 @@ exports.default = TiledTileShader;
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 // Constants
+var pluginParams = PluginManager.parameters("YED_Tiled");
 
 Object.defineProperty(Game_Map.prototype, 'tiledData', {
     get: function get() {
@@ -2034,7 +2040,6 @@ Object.defineProperty(Game_Map.prototype, 'tiledData', {
 
 Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
     get: function get() {
-        var pluginParams = PluginManager.parameters("YED_Tiled");
         var varID = parseInt(pluginParams["Map Level Variable"]);
         if (!varID) {
             return this._currentMapLevel;
@@ -2043,7 +2048,6 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
         }
     },
     set: function set(value) {
-        var pluginParams = PluginManager.parameters("YED_Tiled");
         var varID = parseInt(pluginParams["Map Level Variable"]);
         if (!varID) {
             this._currentMapLevel = value;
@@ -2119,14 +2123,14 @@ Game_Map.prototype._convertChunks = function () {
             layerData.data = new Array(_this.width() * _this.height());
             layerData.data.fill(0);
             layerData.chunks.forEach(function (chunk) {
-                for (var _i = 0; _i < chunk.data.length; _i++) {
-                    var x = chunk.x + _i % chunk.width;
-                    var y = chunk.y + Math.floor(_i / chunk.width);
+                for (var i = 0; i < chunk.data.length; i++) {
+                    var x = chunk.x + i % chunk.width;
+                    var y = chunk.y + Math.floor(i / chunk.width);
                     if (x >= layerData.x + _this.width() || y >= layerData.x + _this.width()) {
                         continue;
                     }
                     var realX = x + y * _this.width();
-                    layerData.data[realX] = chunk.data[_i];
+                    layerData.data[realX] = chunk.data[i];
                 }
             });
         }
@@ -2504,7 +2508,7 @@ Game_Map.prototype._setupRegion = function () {
             this._initializeMapLevelData(level, layerId, ['regions']);
         }
 
-        var _regionMap = this._regions[level][layerId];
+        var regionMap = this._regions[level][layerId];
 
         var _iteratorNormalCompletion5 = true;
         var _didIteratorError5 = false;
@@ -2536,11 +2540,11 @@ Game_Map.prototype._setupRegion = function () {
                             regionId += _layerData3.properties.regionOffset;
                         }
                     }
-                    _regionMap[realX] = regionId;
+                    regionMap[realX] = regionId;
                     if (this.isHalfTile()) {
-                        _regionMap[realX + 1] = regionId;
-                        _regionMap[realX + width] = regionId;
-                        _regionMap[realX + width + 1] = regionId;
+                        regionMap[realX + 1] = regionId;
+                        regionMap[realX + width] = regionId;
+                        regionMap[realX + width + 1] = regionId;
                     }
                 }
             }
@@ -2788,7 +2792,7 @@ Game_Map.prototype._getTileFlags = function (tileData) {
                 group = _TiledManager$getFlag2[0],
                 bit = _TiledManager$getFlag2[1];
 
-            for (var _i2 = flags.length; _i2 <= group; _i2++) {
+            for (var i = flags.length; i <= group; i++) {
                 flags.push(0);
             }
             flags[group] |= bit;
@@ -2799,11 +2803,11 @@ Game_Map.prototype._getTileFlags = function (tileData) {
 
 Game_Map.prototype._combineFlags = function (source, target) {
     source = source ? source.slice(0) : [];
-    for (var _i3 = 0; _i3 < target.length; _i3++) {
-        if (!source.length <= _i3) {
-            source.push(_i3);
+    for (var i = 0; i < target.length; i++) {
+        if (!source.length <= i) {
+            source.push(i);
         }
-        source[_i3] |= target[_i3];
+        source[i] |= target[i];
     }
     return source;
 };
@@ -2833,22 +2837,36 @@ Game_Map.prototype._setupTiledEvents = function () {
                         continue;
                     }
 
-                    if (!object.properties.eventId) {
+                    if (!object.properties.eventId && !object.properties.vehicle) {
                         continue;
                     }
 
-                    var eventId = parseInt(object.properties.eventId);
-                    var event = this._events[eventId];
+                    var event = void 0;
+
+                    if (!!object.properties.vehicle) {
+                        event = this.vehicle(object.properties.vehicle);
+                    } else {
+                        var eventId = parseInt(object.properties.eventId);
+                        event = this._events[eventId];
+                    }
                     if (!event) {
                         continue;
                     }
-                    var x = Math.floor(object.x / this.tileWidth());
-                    var y = Math.floor(object.y / this.tileHeight());
+                    var x = object.x / this.tileWidth();
+                    var y = object.y / this.tileHeight();
+                    if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                        x = Math.floor(x);
+                        y = Math.floor(y);
+                    }
                     if (this.isHalfTile()) {
                         x += 1;
                         y += 1;
                     }
-                    event.locate(x, y);
+                    if (!!object.properties.vehicle) {
+                        event.setLocation(this.mapId(), x, y);
+                    } else {
+                        event.locate(x, y);
+                    }
                     event._tiledProperties = object.properties;
                 }
             } catch (err) {
@@ -2883,7 +2901,6 @@ Game_Map.prototype._setupTiledEvents = function () {
 };
 
 Game_Map.prototype.isHalfTile = function () {
-    var pluginParams = PluginManager.parameters("YED_Tiled");
     return pluginParams["Half-tile movement"].toLowerCase() === "true";
 };
 
@@ -2990,7 +3007,7 @@ Game_Map.prototype.checkPassage = function (x, y, bit) {
             var _layerData9 = this.tiledData.layers[layerId];
             var hideData = TiledManager.checkLayerHidden(_layerData9, 'collisions');
             if (!hideData) {
-                arrowValue &= regionMap[layerId][index];
+                arrowValue &= arrows[layerId][index];
             }
         }
     }
@@ -3129,7 +3146,7 @@ Game_Map.prototype.getTileFlags = function (x, y) {
             var _layerData13 = this.tiledData.layers[layerId];
             var hideData = TiledManager.checkLayerHidden(_layerData13, 'tileFlags');
             if (!hideData && tileFlags[layerId][index]) {
-                tileFlagsValue[i] = this._combineFlags(tileFlagsValue[i], tileFlags[layerId][index]);
+                tileFlagsValue = this._combineFlags(tileFlagsValue, tileFlags[layerId][index]);
             }
         }
     }
