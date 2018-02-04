@@ -1292,7 +1292,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                         layer.alpha = (layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition) + layer._minAlpha;
                         visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
                     }
-                    _this2.visible = visibility;
+                    layer.visible = visibility;
                 }
                 if (!!layer.origin) {
                     if (!layer.repeatX) {
