@@ -1066,6 +1066,14 @@ Game_Map.prototype.renderIsSlipperyFloor = function(x, y, render = 'main', level
     return this.isSlipperyFloor(x, y, render, level);
 }
 
+let _isHealFloor = Game_Map.prototype.isHealFloor
+Game_Map.prototype.isHealFloor = function(x, y, render = false, level = false) {
+    if(level === false) {
+        level = 0;
+    }
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'heal', render);
+};
+
 Game_Map.prototype.getLayerProperties = function(layer = -1, ignoreHidden = true) {
 	if(layer > -1) {
 		if(this.tiledData.layers[layer] && this.tiledData.layers[layer].properties) {

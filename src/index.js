@@ -6,7 +6,9 @@ import "./Sprite_TiledPriorityTile";
 import "./AlphaFilter";
 import { TiledTilemap } from "./TiledTilemap";
 import "./Game_Map";
+import "./Game_Screen";
 import "./Game_CharacterBase";
+import "./Game_Actor";
 import "./Game_Player";
 import "./Sprite_Character";
 import "./Spriteset_Map";
@@ -78,3 +80,4 @@ TiledManager.addHideFunction('showOnSwitch', function(layerData) {
 TiledManager.addFlag('boat', 'ship', 'airship')
 TiledManager.addFlag('ladder', 'bush', 'counter', 'damage')
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp')
+TiledManager.addFlag('heal')

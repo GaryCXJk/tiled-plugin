@@ -52,6 +52,25 @@
  * @desc Whether the position height should update on every move tick or just the final
  * @default false
  * @type boolean
+ * 
+ * @param Basic Floor Damage
+ * @desc The basic floor damage
+ * @type number
+ * @min 1
+ * @default 10
+ * 
+ * @param Basic Floor Heal
+ * @desc The basic floor heal
+ * @type number
+ * @min 1
+ * @default 10
+ *
+ * @param Floor HP Calculation
+ * @desc How to calculate floor damage or heal if more than one tile has the floorDamage or floorHeal tile property
+ * @type select
+ * @option Sum
+ * @option Average
+ * @option Top
  *
  * @help
  * Use these properties in Tiled Map's layer:

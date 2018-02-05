@@ -7,3 +7,7 @@ Game_Player.prototype.checkEventTriggerHere = function (triggers) {
 Game_Player.prototype._checkMapLevelChangingHere = function () {
     $gameMap.checkMapLevelChanging(this.x, this.y);
 };
+
+Game_Player.prototype.isOnHealFloor = function() {
+    return $gameMap.isHealFloor(this.x, this.y) && !this.isInAirship();
+};

@@ -52,6 +52,25 @@
  * @desc Whether the position height should update on every move tick or just the final
  * @default false
  * @type boolean
+ * 
+ * @param Basic Floor Damage
+ * @desc The basic floor damage
+ * @type number
+ * @min 1
+ * @default 10
+ * 
+ * @param Basic Floor Heal
+ * @desc The basic floor heal
+ * @type number
+ * @min 1
+ * @default 10
+ *
+ * @param Floor HP Calculation
+ * @desc How to calculate floor damage or heal if more than one tile has the floorDamage or floorHeal tile property
+ * @type select
+ * @option Sum
+ * @option Average
+ * @option Top
  *
  * @help
  * Use these properties in Tiled Map's layer:
@@ -1371,6 +1390,10 @@ __webpack_require__(13);
 
 __webpack_require__(14);
 
+__webpack_require__(15);
+
+__webpack_require__(16);
+
 /* INITIALIZES LISTENERS */
 
 // Add floor damage while on a slippery floor
@@ -1441,6 +1464,7 @@ TiledManager.addHideFunction('showOnSwitch', function (layerData) {
 TiledManager.addFlag('boat', 'ship', 'airship');
 TiledManager.addFlag('ladder', 'bush', 'counter', 'damage');
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp');
+TiledManager.addFlag('heal');
 
 /***/ }),
 /* 2 */
@@ -3384,6 +3408,17 @@ Game_Map.prototype.renderIsSlipperyFloor = function (x, y) {
     return this.isSlipperyFloor(x, y, render, level);
 };
 
+var _isHealFloor = Game_Map.prototype.isHealFloor;
+Game_Map.prototype.isHealFloor = function (x, y) {
+    var render = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+    var level = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
+    if (level === false) {
+        level = 0;
+    }
+    return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'heal', render);
+};
+
 Game_Map.prototype.getLayerProperties = function () {
     var layer = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : -1;
     var ignoreHidden = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
@@ -3444,6 +3479,17 @@ Game_Map.prototype.getTileProperties = function (x, y) {
 "use strict";
 
 
+Game_Screen.prototype.startFlashForHeal = function () {
+    this.startFlash([128, 192, 255, 128], 8);
+};
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var pluginParams = PluginManager.parameters("YED_Tiled");
 
 Game_CharacterBase.prototype.screenZ = function () {
@@ -3496,7 +3542,97 @@ Game_CharacterBase.prototype.locationHeight = function () {
 };
 
 /***/ }),
-/* 12 */
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+// Constants
+var pluginParams = PluginManager.parameters("YED_Tiled");
+
+var _checkFloorEffect = Game_Actor.prototype.checkFloorEffect;
+Game_Actor.prototype.checkFloorEffect = function () {
+    _checkFloorEffect.call(this);
+    if ($gamePlayer.isOnHealFloor()) {
+        this.executeFloorHeal();
+    }
+};
+
+Game_Actor.prototype.executeFloorHeal = function () {
+    var heal = Math.floor(this.basicFloorHeal() * this.fdr);
+    heal = Math.min(heal, this.maxFloorHeal());
+    this.gainHp(heal);
+    if (heal > 0) {
+        this.performMapHeal();
+    }
+};
+
+Game_Actor.prototype._getFloorHPCalculation = function () {
+    var type = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'damage';
+
+    var typeName = type.slice(0, 1).toUpperCase() + type.slice(1).toLowerCase();
+    var floorHP = [];
+    for (var layerId = 0; layerId < $gameMap.tiledData.layers; layerId++) {
+        var layerData = $gameMap.tiledData.layers[layerId];
+        if (!layerData.properties) {
+            return;
+        }
+        var level = parseInt(layerData.properties.level) || 0;
+        if (level !== $gameMap.currentMapLevel) {
+            return;
+        }
+        if (TiledManager.checkLayerHidden(layerData)) {
+            return;
+        }
+        var tile = Game_Map.prototype.getTileProperties(x, y, layerId);
+        if (!!tile.properties && !!tile.properties['floor' + typeName]) {
+            floorHP.push(layerData.properties['floor' + typeName]);
+        }
+    }
+    var actualHP = 0;
+    switch ((pluginParams["Floor HP Calculation"] || '').toLowerCase()) {
+        case 'sum':
+            floorHP.forEach(function (hp) {
+                actualHP += hp;
+            });
+            break;
+        case 'average':
+            floorHP.forEach(function (hp) {
+                actualHP += hp;
+            });
+            actualHP = Math.round(actualHP / floorHP.length);
+            break;
+        case 'top':
+        default:
+            actualHP = floorHP.pop();
+            break;
+    }
+    return actualHP;
+};
+
+Game_Actor.prototype.basicFloorDamage = function () {
+    var actualDamage = this._getFloorHPCalculation('damage');
+    return actualDamage || parseInt(pluginParams["Basic Floor Damage"]) || 10;
+};
+
+Game_Actor.prototype.basicFloorHeal = function () {
+    var actualHeal = this._getFloorHPCalculation('heal');
+    return actualHeal || parseInt(pluginParams["Basic Floor Heal"]) || 10;
+};
+
+Game_Actor.prototype.maxFloorHeal = function () {
+    return Math.max(this.mhp - this.hp, 0);
+};
+
+Game_Actor.prototype.performMapHeal = function () {
+    if (!$gameParty.inBattle()) {
+        $gameScreen.startFlashForHeal();
+    }
+};
+
+/***/ }),
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3512,8 +3648,12 @@ Game_Player.prototype._checkMapLevelChangingHere = function () {
     $gameMap.checkMapLevelChanging(this.x, this.y);
 };
 
+Game_Player.prototype.isOnHealFloor = function () {
+    return $gameMap.isHealFloor(this.x, this.y) && !this.isInAirship();
+};
+
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3526,7 +3666,7 @@ Sprite_Character.prototype.update = function () {
 };
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
