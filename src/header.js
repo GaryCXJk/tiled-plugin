@@ -1,47 +1,101 @@
+/******************************************************************************
+ * YED_Tiled.js                                                               *
+ ******************************************************************************
+ * Tiled Plugin v2.00                                                         *
+ * By Archeia and Dr. Yami                                                    *
+ ******************************************************************************
+ * License: Custom                                                            *
+ ******************************************************************************
+ * You are free to use this plugin for your own project, both in commercial   *
+ * as well as non-commercial projects, free of charge. Do not claim this      *
+ * plugin as your own.                                                        *
+ ******************************************************************************/
+
 /*:
- * @plugindesc v1.10 Plugin supports Tiled Map Editor maps with some additional
+ * @plugindesc v2.00 Plugin supports Tiled Map Editor maps with some additional
  * features.
  * @author Dr.Yami
  *
+ * @param Files
+ *
  * @param Maps Location
+ * @parent Files
  * @desc The folder where maps are located.
  * Default: maps/
  * @default maps/
  *
  * @param Tilesets Location
+ * @parent Files
  * @desc The folder where tilesets are located.
  * Default: tilesets/
  * @default tilesets/
  *
+ * @param Z Indexes
+ *
  * @param Z - Player
+ * @parent Z Indexes
  * @desc Z Index for Same as Characters events and Players.
  * Default: 3
  * @default 3
+ * @type number
  *
  * @param Z - Below Player
+ * @parent Z Indexes
  * @desc Z Index for Below Characters events.
  * Default: 1
  * @default 1
+ * @type number
  *
  * @param Z - Above Player
+ * @parent Z Indexes
  * @desc Z Index for Above Characters events.
  * Default: 5
  * @default 5
+ * @type number
  *
+ * @param Tile Settings
+ * 
  * @param Half-tile movement
+ * @parent Tile Settings
  * @desc Moving and collision checking by half a tile.
  * Can be true or false
  * @default true
  * @type boolean
  *
  * @param Priority Tiles Limit
+ * @parent Tile Settings
  * @desc Limit for priority tile sprites.
  * Should not be too large.
  * @default 256
+ * @type number
+ *
+ * @param Basic Floor Damage
+ * @parent Tile Settings
+ * @desc The basic floor damage.
+ * @type number
+ * @min 1
+ * @default 10
+ * 
+ * @param Basic Floor Heal
+ * @parent Tile Settings
+ * @desc The basic floor heal.
+ * @type number
+ * @min 1
+ * @default 10
+ *
+ * @param Floor HP Calculation
+ * @parent Tile Settings
+ * @desc How to calculate floor damage or heal if more than one tile has the floorDamage or floorHeal tile property.
+ * @type select
+ * @option Sum
+ * @option Average
+ * @option Top
+ * @default Top
  *
  * @param Map Level Variable
- * @desc Get and set map level by variable
+ * @desc Get and set map level by variable.
  * @default 0
+ * @type number
  * 
  * @param Constrain Events to Grid
  * @desc Whether events should be constrained to a grid or not.
@@ -49,30 +103,129 @@
  * @type boolean
  * 
  * @param Position Height - Always Check On Move Update
- * @desc Whether the position height should update on every move tick or just the final
+ * @desc Whether the position height should update on every move tick or just the final.
  * @default false
  * @type boolean
  * 
- * @param Basic Floor Damage
- * @desc The basic floor damage
- * @type number
- * @min 1
- * @default 10
- * 
- * @param Basic Floor Heal
- * @desc The basic floor heal
- * @type number
- * @min 1
- * @default 10
- *
- * @param Floor HP Calculation
- * @desc How to calculate floor damage or heal if more than one tile has the floorDamage or floorHeal tile property
- * @type select
- * @option Sum
- * @option Average
- * @option Top
- *
  * @help
+ * ============================================================================
+ * = About                                                                    =
+ * ============================================================================
+ *
+ * * Tired of RPG Maker MV's Map Editor?
+ * * Do you want to map the XP way but more?
+ * * Tired of Parallax Mapping?
+ * * Want to do round corners?
+ * * Want to create a map with basically unlimited layers?
+ *
+ * Well, now all those worries are gone! Instead, let's just use the awesome
+ * map editor, Tiled! Free, easy to use and very flexible Map Editor. This is
+ * one of our reveals for RMMV's release but due to unforeseen circumstances,
+ * we were unable to showcase this really awesome plugin in RPG Maker Channel.
+ *
+ * - Archeia and Dr. Yami
+ *
+ * Tiled is a separate application developed by Bjorn, and you can find it
+ * here:
+ *
+ * http://www.mapeditor.org/
+ *
+ * ============================================================================
+ * = Usage                                                                    =
+ * ============================================================================
+ *
+ * Just put this script as high as possible, preferably before plugins that
+ * extend functionality of maps and rendering thereof, but after any plugin
+ * that rewrites map handling. Ideally, you'd only have to use this plugin for
+ * any of your mapping needs.
+ *
+ * Note that the Tiled plugin handles the following:
+ * - Map layouts and rendering
+ * - Regions
+ * - Collisions
+ * - Parallax images
+ *
+ * Note that this guide won't explain how to use Tiled itself, this will only
+ * go over the plugin specific features.
+ *
+ * ----------------------------------------------------------------------------
+ * - Starting your project                                                    -
+ * ----------------------------------------------------------------------------
+ *
+ * After you've added the Tiled plugin you may want to start creating your
+ * Tiled maps. Make sure you make these maps in your game folder, so that any
+ * direct references to images will work right off the box.
+ *
+ * The first thing you'll need to do is to create a map inside RPG Maker MV.
+ * By default, you'll already have a map with map ID 1, so when you start off,
+ * you can just use that map. Now, create a new map in Tiled. Make sure its
+ * orientation is Orthogonal, and the map is saved as a comma separated value
+ * (CSV).
+ *
+ * Next, save your map as a json file. Call it Map, followed by the ID, but not
+ * zero padded. For example, if your map ID is 1, save your Tiled map as
+ * Map1.json. Make sure you directly save it in the folder you defined in your
+ * plugin settings (Maps Location). And with that, you've set up your first
+ * map in Tiled.
+ *
+ * ----------------------------------------------------------------------------
+ * - Infinite maps vs. fixed size maps                                        -
+ * ----------------------------------------------------------------------------
+ *
+ * Tiled has two types of maps, infinite maps and fixed size maps. They are
+ * essentially similar in use, with one difference, which is that infinite maps
+ * don't have a fixed size. In the Tiled plugin, both maps are treated the
+ * same, though, with infinite maps having their size determined by the
+ * sizes defined inside the Tiled map format.
+ *
+ * This means that infinite maps may appear smaller or cut off than what they
+ * are supposed to look like. To fix this, you could preset the sizes by
+ * manually setting the size. Your map will remain an infinite map, but you'll
+ * now have a bit more flexibility with how the map is shaped in the final
+ * product.
+ *
+ * It's still recommended to convert infinite maps to fixed size maps, as the
+ * pre-processing phase will be skipped, allowing for faster map loading.
+ *
+ * ----------------------------------------------------------------------------
+ * - Layers                                                                   -
+ * ----------------------------------------------------------------------------
+ *
+ * Like stated before, with this plugin you can use practically unlimited
+ * layers. By default, a layer has no z-index, which means it'll always be at
+ * the bottom, or stacked on top of other layers and objects with no z-index.
+ *
+ * ----------------------------------------------------------------------------
+ * - Tilesets                                                                 -
+ * ----------------------------------------------------------------------------
+ *
+ * By default, RPG Maker MV tilesets won't work in Tiled, since autotiles
+ * aren't implemented. However, there is a tool that can convert RPG Maker MV
+ * tilesets so that it can be used in Tiled, called Remex.
+ *
+ * https://app.assembla.com/spaces/rpg-maker-to-tiled-suite/subversion/source
+ *
+ * When importing tilesets, you have the option of embedding the tileset data
+ * inside the map itself, or saving it in a separate file. Make sure that when
+ * you do the latter, you'll have to save it as a json file, and you'll have to
+ * put it in the folder specified in the plugin configuration, under
+ * Tilesets Location.
+ *
+ * ----------------------------------------------------------------------------
+ * - Events                                                                   -
+ * ----------------------------------------------------------------------------
+ *
+ *
+ * ----------------------------------------------------------------------------
+ * - Extra notes on parallax images                                           -
+ * ----------------------------------------------------------------------------
+ *
+ * While the Tiled plugin has its own handles for parallax images, you can
+ * still use RPG Maker MV's default parallax image functionality, as that will
+ * not be overwritten. This is to give the creators options, in case the Tiled
+ * functionalities are too confusing.
+ *
+ *
  * Use these properties in Tiled Map's layer:
  *   zIndex
  *   The layer will have z-index == property's value
@@ -192,12 +345,13 @@
  *   flagIsAirship
  *   The tile is landable by airship
  * 
- * =========================================================================================
- *   For plugin developers
- *     - Extra notes by Gary Kertopermono a.k.a. GaryCXJk
- * =========================================================================================
+ * ----------------------------------------------------------------------------
+ * - For plugin developers                                                    -
+ * -   * Extra notes by Gary Kertopermono a.k.a. GaryCXJk                     -
+ * ----------------------------------------------------------------------------
  * 
- * There are now hooks for plugin developers, so that they could add their own plugin hooks.
+ * There are now hooks for plugin developers, so that they could add their own
+ * plugin hooks.
  * 
  * Static methods:
  * 
