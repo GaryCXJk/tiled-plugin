@@ -9,6 +9,8 @@ function TiledManager() {
 
 window.TiledManager = TiledManager;
 
+let pluginParams = PluginManager.parameters("YED_Tiled");
+
 let _listeners = {}
 let _hideFunctions = {}
 let _hideIgnoreFunctions = {
@@ -19,32 +21,48 @@ let _hideIgnoreFunctions = {
 }
 let _tileFlags = {}
 let _tileFlagIndex = 1;
+let _vehicles = {};
+let _vehiclesByIndex = [];
 
-TiledManager.addListener = function(objectName, listener, callback, recursive = true) {
+let _fullVehicleData = {
+    bgm: {
+        name: '',
+        pan: 0,
+        pitch: 100,
+        volume: 90
+    },
+    characterIndex: 0,
+    characterName:"",
+    startMapId: 0,
+    startX: 0,
+    startY: 0
+};
+
+TiledManager.addListener = function(objectName, event, callback, recursive = true) {
     if(typeof objectName === 'function') {
         objectName = objectName.name
     }
     if(!_listeners[objectName]) {
         _listeners[objectName] = {}
     }
-    if(!_listeners[objectName][listener]) {
-        _listeners[objectName][listener] = []
+    if(!_listeners[objectName][event]) {
+        _listeners[objectName][event] = []
     }
     callback.recursive = !!recursive
-    _listeners[objectName][listener].push(callback)
+    _listeners[objectName][event].push(callback)
 }
 
-TiledManager.triggerListener = function(object, listener, options = {}) {
+TiledManager.triggerListener = function(object, event, options = {}) {
     let objectName = object.constructor.name
-    if(!_listeners[objectName] || !_listeners[objectName][listener]) {
+    if(!_listeners[objectName] || !_listeners[objectName][event]) {
         return false
     }
     let top = true
     let proto = object.__proto__
     while(proto) {
         objectName = proto.constructor.name
-        if(_listeners[objectName] && _listeners[objectName][listener]) {
-            _listeners[objectName][listener].forEach(callback => {
+        if(_listeners[objectName] && _listeners[objectName][event]) {
+            _listeners[objectName][event].forEach(callback => {
                 if(top || callback.recursive) {
                     callback.call(object, options)
                 }
@@ -110,4 +128,76 @@ TiledManager.getFlagLocation = function(flagId) {
     let bit = (1 << (flag % 16)) & 0xffff;
     let group = Math.floor(flag / 16);
     return [group, bit];
+}
+
+TiledManager.getParameterFlags = function() {
+    if(!!pluginParams['Custom Tile Flags']) {
+        let tileFlags = JSON.parse(pluginParams['Custom Tile Flags']);
+        TiledManager.addFlag.apply(this, tileFlags);
+    }
+}
+
+/* VEHICLES */
+TiledManager.createVehicle = function(vehicleName, vehicleData = false) {
+    if(!vehicleData) {
+        vehicleData = Object.assign({}, _fullVehicleData, {
+            bgm: Object.assign({}, _fullVehicleData.bgm)
+        });
+    } else if(vehicleData !== true) {
+        vehicleData = Object.assign({}, _fullVehicleData, vehicleData, {
+            bgm: Object.assign({}, _fullVehicleData.bgm, vehicleData.bgm)
+        });
+    }
+    let vehicle = new Game_Vehicle(vehicleName, vehicleData);
+    _vehicles[vehicleName] = vehicle;
+    _vehiclesByIndex.push(vehicleName);
+};
+
+TiledManager.refreshVehicles = function(vehicles = []) {
+    _vehiclesByIndex.forEach(vehicleName => {
+        if(vehicles.length === 0 || vehicles.indexOf(vehicleName) > -1) {
+            _vehicles[vehicleName].refresh();
+        }
+    });
+};
+
+TiledManager.getAllVehicles = function(vehicles = []) {
+    let returnVehicles = [];
+    _vehiclesByIndex.forEach(vehicleName => {
+        if(vehicles.length === 0 || vehicles.indexOf(vehicleName) > -1) {
+            returnVehicles.push(_vehicles[vehicleName]);
+        }
+    });
+    return returnVehicles;
+};
+
+TiledManager.getVehicle = function(id) {
+    if(isNaN(id)) {
+        if(_vehicles[id]) {
+            return _vehicles[id];
+        }
+    } else {
+        if(id < _vehiclesByIndex.length) {
+            return _vehicles[_vehiclesByIndex[id]];
+        }
+    }
+    return null;
+}
+
+TiledManager.updateVehicles = function(vehicles = []) {
+    _vehiclesByIndex.forEach(vehicleName => {
+        if(vehicles.length === 0 || vehicles.indexOf(vehicleName) > -1) {
+            _vehicles[vehicleName].update();
+        }
+    });
+}
+
+TiledManager.getParameterVehicles = function() {
+    if(!!pluginParams['Custom Vehicles']) {
+        let vehicles = JSON.parse(pluginParams['Custom Vehicles']);
+        vehicles.forEach(vehicle => {
+            let vehicleData = JSON.parse(vehicle);
+            TiledManager.createVehicle(vehicleData.vehicleName, vehicleData);
+        })
+    }
 }

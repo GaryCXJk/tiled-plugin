@@ -1,47 +1,101 @@
+/******************************************************************************
+ * YED_Tiled.js                                                               *
+ ******************************************************************************
+ * Tiled Plugin v2.00                                                         *
+ * By Archeia and Dr. Yami                                                    *
+ ******************************************************************************
+ * License: Custom                                                            *
+ ******************************************************************************
+ * You are free to use this plugin for your own project, both in commercial   *
+ * as well as non-commercial projects, free of charge. Do not claim this      *
+ * plugin as your own.                                                        *
+ ******************************************************************************/
+
 /*:
- * @plugindesc v1.10 Plugin supports Tiled Map Editor maps with some additional
+ * @plugindesc v2.00 Plugin supports Tiled Map Editor maps with some additional
  * features.
  * @author Dr.Yami
  *
+ * @param Files
+ *
  * @param Maps Location
+ * @parent Files
  * @desc The folder where maps are located.
  * Default: maps/
  * @default maps/
  *
  * @param Tilesets Location
+ * @parent Files
  * @desc The folder where tilesets are located.
  * Default: tilesets/
  * @default tilesets/
  *
+ * @param Z Indexes
+ *
  * @param Z - Player
+ * @parent Z Indexes
  * @desc Z Index for Same as Characters events and Players.
  * Default: 3
  * @default 3
+ * @type number
  *
  * @param Z - Below Player
+ * @parent Z Indexes
  * @desc Z Index for Below Characters events.
  * Default: 1
  * @default 1
+ * @type number
  *
  * @param Z - Above Player
+ * @parent Z Indexes
  * @desc Z Index for Above Characters events.
  * Default: 5
  * @default 5
+ * @type number
  *
+ * @param Tile Settings
+ * 
  * @param Half-tile movement
+ * @parent Tile Settings
  * @desc Moving and collision checking by half a tile.
  * Can be true or false
  * @default true
  * @type boolean
  *
  * @param Priority Tiles Limit
+ * @parent Tile Settings
  * @desc Limit for priority tile sprites.
  * Should not be too large.
  * @default 256
+ * @type number
+ *
+ * @param Basic Floor Damage
+ * @parent Tile Settings
+ * @desc The basic floor damage.
+ * @type number
+ * @min 1
+ * @default 10
+ * 
+ * @param Basic Floor Heal
+ * @parent Tile Settings
+ * @desc The basic floor heal.
+ * @type number
+ * @min 1
+ * @default 10
+ *
+ * @param Floor HP Calculation
+ * @parent Tile Settings
+ * @desc How to calculate floor damage or heal if more than one tile has the floorDamage or floorHeal tile property.
+ * @type select
+ * @option Sum
+ * @option Average
+ * @option Top
+ * @default Top
  *
  * @param Map Level Variable
- * @desc Get and set map level by variable
+ * @desc Get and set map level by variable.
  * @default 0
+ * @type number
  * 
  * @param Constrain Events to Grid
  * @desc Whether events should be constrained to a grid or not.
@@ -49,284 +103,686 @@
  * @type boolean
  * 
  * @param Position Height - Always Check On Move Update
- * @desc Whether the position height should update on every move tick or just the final
+ * @desc Whether the position height should update on every move tick or just the final.
  * @default false
  * @type boolean
  * 
- * @param Basic Floor Damage
- * @desc The basic floor damage
- * @type number
- * @min 1
- * @default 10
+ * @param Custom Data
  * 
- * @param Basic Floor Heal
- * @desc The basic floor heal
- * @type number
- * @min 1
- * @default 10
- *
- * @param Floor HP Calculation
- * @desc How to calculate floor damage or heal if more than one tile has the floorDamage or floorHeal tile property
- * @type select
- * @option Sum
- * @option Average
- * @option Top
+ * @param Custom Tile Flags
+ * @parent Custom Data
+ * @desc Set custom tile flags here.
+ * @type text[]
+ * 
+ * @param Custom Vehicles
+ * @parent Custom Data
+ * @desc Set custom vehicles here.
+ * @type struct<Vehicle>[]
  *
  * @help
- * Use these properties in Tiled Map's layer:
- *   zIndex
- *   The layer will have z-index == property's value
  *
- *   collision
- *   The layer will be collision mask layer. Use one of these value:
- *     full - Normal collision (1 full-tile)
- *     arrow - Arrow collision
- *     up-left - Half-tile collision up-left quarter
- *     up-right - Half-tile collision up-right quarter
- *     down-left - Half-tile collision down-left quarter
- *     down-right - Half-tile collision down-right quarter
- *     tiles - Collision is determined by the tileset
- *
- *   arrowImpassable
- *   If the layer is an arraw collision mask layer, it will make one direction be impassable
- *   Value can be up, down, left, right
- *
- *   regionId
- *   Mark the layer as region layer, the layer ID will be the value of property. If set to
- *   -1, it will use the tileset to determine the region ID.
- *
- *   hideOnRegion
- *   Hide the layer when on a certain region.
- *
- *   hideOnRegions
- *   Hide the layer when on a certain region. This takes an array of possible regions, and
- *   the player only needs to be on one of the layers. Each region is comma separated.
+ * ================================================================================
+ * = Introduction                                                                 =
+ * ================================================================================
  * 
- *   hideOnAnyRegions
- *   Hide the layer when on a certain region. This functions the same as hideOnRegions,
- *   except it will take all regions on that tile instead of just the top visible region.
- *
+ *  * Tired of RPG Maker MV's Map Editor?
+ *  * Do you want to map the XP way but more?
+ *  * Tired of Parallax Mapping?
+ *  * Want to do round corners?
+ *  * Want to create a map with basically unlimited layers?
+ * 
+ * Well, now all those worries are gone! Instead, let's just use the awesome
+ * map editor, Tiled! Free, easy to use and very flexible Map Editor. This is
+ * one of our reveals for RMMV's release but due to unforeseen circumstances,
+ * we were unable to showcase this really awesome plugin in RPG Maker Channel.
+ * 
+ * -- Archeia and Dr. Yami
+ * 
+ * Tiled is a separate application developed by Bjorn, and you can find it
+ * here:
+ * 
+ * http://www.mapeditor.org/
+ * 
+ * ================================================================================
+ * = Usage                                                                        =
+ * ================================================================================
+ * 
+ * Just put this script as high as possible, preferably before plugins that
+ * extend functionality of maps and rendering thereof, but after any plugin
+ * that rewrites map handling. Ideally, you'd only have to use this plugin for
+ * any of your mapping needs.
+ * 
+ * Note that the Tiled plugin handles the following:
+ *  * Map layouts and rendering
+ *  * Regions
+ *  * Collisions
+ *  * Parallax images
+ * 
+ * Note that this guide won't explain how to use Tiled itself, this will only
+ * go over the plugin specific features.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Starting your project                                                        -
+ * --------------------------------------------------------------------------------
+ * 
+ * After you've added the Tiled plugin you may want to start creating your
+ * Tiled maps. Make sure you make these maps in your game folder, so that any
+ * direct references to images will work right off the box.
+ * 
+ * The first thing you'll need to do is to create a map inside RPG Maker MV.
+ * By default, you'll already have a map with map ID 1, so when you start off,
+ * you can just use that map. Now, create a new map in Tiled. Make sure its
+ * orientation is Orthogonal, and the map is saved as a comma separated value
+ * (CSV).
+ * 
+ * Next, save your map as a json file. Call it Map, followed by the ID, but not
+ * zero padded. For example, if your map ID is 1, save your Tiled map as
+ * Map1.json. Make sure you directly save it in the folder you defined in your
+ * plugin settings (Maps Location). And with that, you've set up your first
+ * map in Tiled.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Infinite maps vs. fixed size maps                                            -
+ * --------------------------------------------------------------------------------
+ * 
+ * Tiled has two types of maps, infinite maps and fixed size maps. They are
+ * essentially similar in use, with one difference, which is that infinite maps
+ * don't have a fixed size. In the Tiled plugin, both maps are treated the
+ * same, though, with infinite maps having their size determined by the
+ * sizes defined inside the Tiled map format.
+ * 
+ * This means that infinite maps may appear smaller or cut off than what they
+ * are supposed to look like. To fix this, you could preset the sizes by
+ * manually setting the size. Your map will remain an infinite map, but you'll
+ * now have a bit more flexibility with how the map is shaped in the final
+ * product.
+ * 
+ * It's still recommended to convert infinite maps to fixed size maps, as the
+ * pre-processing phase will be skipped, allowing for faster map loading.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Layers                                                                       -
+ * --------------------------------------------------------------------------------
+ * 
+ * Like stated before, with this plugin you can use practically unlimited
+ * layers. By default, a layer has no z-index, which means it'll always be at
+ * the bottom, or stacked on top of other layers and objects with no z-index.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Tilesets                                                                     -
+ * --------------------------------------------------------------------------------
+ * 
+ * By default, RPG Maker MV tilesets won't work in Tiled, since autotiles
+ * aren't implemented. However, there is a tool that can convert RPG Maker MV
+ * tilesets so that it can be used in Tiled, called Remex.
+ * 
+ * https://app.assembla.com/spaces/rpg-maker-to-tiled-suite/subversion/source
+ * 
+ * When importing tilesets, you have the option of embedding the tileset data
+ * inside the map itself, or saving it in a separate file. Make sure that when
+ * you do the latter, you'll have to save it as a json file, and you'll have to
+ * put it in the folder specified in the plugin configuration, under
+ * Tilesets Location.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Events                                                                       -
+ * --------------------------------------------------------------------------------
+ * 
+ * Setting up events is easy, although it does require you to actually still use
+ * RPG Maker MV, as you'll be setting up your events here. Like maps, each event
+ * has its own ID. To retrieve its ID, you'll have to select your event, and in
+ * the bottom right corner of the RPG Maker MV editor, you'll see the event ID as
+ * well as its name, for example, 001:EV001.
+ * 
+ * Next, you'll need to create a new object in Tiled. Create a new Object layer,
+ * and create a new rectangular object. You could in theory use a different shape,
+ * but since events generally are rectangular, you want to make sure your object
+ * is the same shape as a tile. Also, if Constrain Events to Grid is set to true,
+ * the objects will automatically snap to the grid, so, if you don't want your
+ * event to appear somewhere you didn't intend it to be, make sure you snap to
+ * grid.
+ * 
+ * Now, to make it all work, all you need to do is give this object a property
+ * eventId and set the event ID as the value. This will move the event to the
+ * proper map location.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Vehicles                                                                     -
+ * --------------------------------------------------------------------------------
+ * 
+ * You can add vehicles in the same way as events, except you don't have to place
+ * the vehicle in your map. This is because vehicles already are on every map.
+ * 
+ * To place a vehicle in your map, use the object property vehicle, and set as
+ * the value the name of the vehicle you want to add. You can use "boat", "ship"
+ * or "airship", or any custom made vehicle you have made through plugins.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Extra notes on parallax images                                               -
+ * --------------------------------------------------------------------------------
+ * 
+ * While the Tiled plugin has its own handles for parallax images, you can
+ * still use RPG Maker MV's default parallax image functionality, as that will
+ * not be overwritten. This is to give the creators options, in case the Tiled
+ * functionalities are too confusing.
+ * 
+ * ================================================================================
+ * = Properties                                                                   =
+ * ================================================================================
+ * 
+ * As explained earlier, several elements in Tiled can have properties that will
+ * interface with the Tiled Plugin.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Tile layer properties                                                        -
+ * --------------------------------------------------------------------------------
+ * 
+ *   zIndex
+ * The layer will have z-index equal to the property's value.
+ * 
+ *   collision
+ * The layer will be a collision mask layer. Use one of these value:
+ * 
+ *  * full - Normal collision (1 full-tile)
+ *  * arrow - Arrow collision
+ *  * up-left - Half-tile collision up-left quarter
+ *  * up-right - Half-tile collision up-right quarter
+ *  * down-left - Half-tile collision down-left quarter
+ *  * down-right - Half-tile collision down-right quarter
+ *  * tiles - Collision is determined by the tileset
+ * 
+ *   arrowImpassable
+ * If the layer is an arraw collision mask layer, it will make one direction be
+ * impassable. Value can be up, down, left or right.
+ * 
+ *   regionId
+ * Mark the layer as region layer, the layer ID will be the value of property.
+ * If set to -1, it will use the tileset to determine the region ID.
+ * 
  *   priority
- *   Mark the layer as priority layer, allows it goes above player when player is behind,
- *   below player when player is in front of. Value should be > 0, zIndex should be
- *   the same as player z-index.
- *
+ * Mark the layer as priority layer, allows it goes above player when player is
+ * behind, below player when player is in front of. Value should be greater than
+ * 0, zIndex should be the same as player z-index.
+ * 
+ * Note that this also determines the drawing priority, e.g. layers with the
+ * same z-index and y-position would then be sorted by their priority.
+ * 
  *   level
- *   Mark the layer on different level, use for multiple levels map (for example a bridge).
- *   Default level is 0. Use this for collision and regionId.
- *
- *   hideOnLevel
- *   Hide the layer when on a certain level.
- *
+ * Mark the layer on different a level, use for multiple levels map (for example
+ * a bridge). Default level is 0. Use this for collision and regionId.
+ * 
  *   toLevel
- *   The tiles on this layer will transfer player to another level.
- *
- *   hideOnSwitch
- *   Hide the layer when a certain switch is set.
- *
- *   showOnSwitch
- *   Show the layer when a certain switch is set.
+ * The tiles on this layer will transfer the player to another level.
  * 
  *   tileFlags
- *   Set this to true to enable tile flags in the tileset. Set this to hide if you aren't
- *   going to draw this layer.
- *
- * Use these properties in Tiled Tileset's tile:
+ * Set this to true to enable tile flags in the tileset. Set this to "hide" if you
+ * aren't going to draw this layer.
+ * 
+ *   hideOnLevel
+ * Hide the layer when on a certain level.
+ * 
+ *   showOnLevel
+ * Show the layer when on a certain level.
+ * 
+ *   hideOnRegion
+ * Hide the layer when on a certain region.
+ * 
+ *   hideOnRegions
+ * Hide the layer when on a certain region. This takes an array of possible
+ * regions, and the player only needs to be on one of the layers. Each region is
+ * comma separated.
+ * 
+ *   hideOnAnyRegions
+ * Hide the layer when on a certain region. This functions the same as
+ * hideOnRegions, except it will take all regions on that tile instead of just
+ * the top visible region.
+ * 
+ *   hideOnSwitch
+ * Hide the layer when a certain switch is set.
+ * 
+ *   showOnSwitch
+ * Show the layer when a certain switch is set.
+ * 
+ *   transition
+ * This will enable the layer to transition from a shown state to a hidden state.
+ * Set the value as the duration in ticks.
+ * 
+ *   minimumOpacity
+ * The minimum opacity the layer should fade out to.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Tileset properties                                                           -
+ * --------------------------------------------------------------------------------
+ * 
+ *   ignoreLoading
+ * Ignores the image, and doesn't load nor render it. Good if you want to mark
+ * certain areas in Tiled for development purposes or mapping notes, but don't
+ * want them to appear in the game.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Tile properties                                                              -
+ * --------------------------------------------------------------------------------
+ * 
  *   regionId
- *   Mark the tile as region, the tile's region ID will be the value of property
- *
+ * Mark the tile as region, the tile's region ID will be the value of property
+ * 
  *   collision
- *   Mark the tile as having normal collision (1 full-tile)
- *
+ * Mark the tile as having normal collision (1 full-tile)
+ * 
  *   collisionUpLeft
- *   Mark the tile as having half-tile collision up-left quarter
- *
+ * Mark the tile as having half-tile collision up-left quarter
+ * 
  *   collisionUpRight
- *   Mark the tile as having half-tile collision up-right quarter
- *
+ * Mark the tile as having half-tile collision up-right quarter
+ * 
  *   collisionDownLeft
- *   Mark the tile as having half-tile collision down-left quarter
- *
+ * Mark the tile as having half-tile collision down-left quarter
+ * 
  *   collisionDownRight
- *   Mark the tile as having half-tile collision down-right quarter
- *
- *   collisionUpLeft, collisionUpRight, collisionDownLeft and collisionDownRight can be
- *   combined to create a custom collision.
- *
+ * Mark the tile as having half-tile collision down-right quarter
+ * 
+ * collisionUpLeft, collisionUpRight, collisionDownLeft and collisionDownRight can
+ * be combined to create a custom collision.
+ * 
  *   arrowImpassableLeft
- *   Make the left direction impassable
- *
+ * Make the left direction impassable
+ * 
  *   arrowImpassableUp
- *   Make the up direction impassable
- *
+ * Make the up direction impassable
+ * 
  *   arrowImpassableRight
- *   Make the right direction impassable
- *
+ * Make the right direction impassable
+ * 
  *   arrowImpassableDown
- *   Make the down direction impassable
- *
- *   arrowImpassableLeft, arrowImpassableUp, arrowImpassableRight and arrowImpassableDown
- *   can be combined to create a custom arrow passability.
+ * Make the down direction impassable
  * 
- *   flagIsLadder
- *   The tile is a ladder
- *   
- *   flagIsBush
- *   The tile is a bush or has special bush rendering
- * 
- *   flagIsCounter
- *   The tile is a counter (can interact through this tile with another event)
- * 
- *   flagIsDamage
- *   The tile is a damage tile (player gets damaged when stepped on)
- * 
- *   flagIsIce
- *   The tile is slippery (not implemented, reserved)
+ * arrowImpassableLeft, arrowImpassableUp, arrowImpassableRight and
+ * arrowImpassableDown can be combined to create a custom arrow passability.
  * 
  *   flagIsBoat
- *   The tile is passable by boat
+ * The tile is passable by boat
  * 
  *   flagIsShip
- *   The tile is passable by ship
+ * The tile is passable by ship
  * 
  *   flagIsAirship
- *   The tile is landable by airship
+ * The tile is landable by airship
  * 
- * =========================================================================================
- *   For plugin developers
- *     - Extra notes by Gary Kertopermono a.k.a. GaryCXJk
- * =========================================================================================
+ *   flagIsLadder
+ * The tile is a ladder
  * 
- * There are now hooks for plugin developers, so that they could add their own plugin hooks.
+ *   flagIsBush
+ * The tile is a bush or has special bush rendering
  * 
- * Static methods:
+ *   flagIsCounter
+ * The tile is a counter (can interact through this tile with another event)
  * 
- *   TiledManager.addHideFunction(id, callback[, ignore])
+ *   flagIsDamage
+ * The tile is a damage tile (player gets damaged when stepped on)
  * 
- *     Adds a new function to hide or even show certain layers based on conditions.
+ *   flagIsIce
+ * The tile is slippery
  * 
- *     id
- *     An identifier. This is also the name of the property that you'll define on the layer.
+ * --------------------------------------------------------------------------------
+ * - Object properties                                                            -
+ * --------------------------------------------------------------------------------
  * 
- *     callback
- *     A function that gets called whenever a layer needs to be checked whether or not it's
- *     hidden. It requires the layer data as an argument and returns  whether to hide the
- *     layer or not, where true means the layer will be hidden.
+ *   eventId
+ * The event ID that should be placed at this position.
  * 
- *     ignore (optional)
- *     An array that defines which types of data will ignore this hide function. Possible
- *     types are:
- *     collisionMap, arrowCollisionMap, regions, mapLevelChange, tileFlags
+ *   vehicle
+ * The vehicle that should be placed at this position.
  * 
- *       Example:
+ * --------------------------------------------------------------------------------
+ * - Image properties                                                             -
+ * --------------------------------------------------------------------------------
  * 
- *       TiledManager.addHideFunction("randomlyHide", function(layerData) {
- *         return Math.floor(Math.random() * 2) === 1;
- *       });
+ *   ignoreLoading
+ * Ignores the image, and doesn't load nor render it. Good if you want to mark
+ * certain areas in Tiled for development purposes or mapping notes, but don't
+ * want them to appear in the game.
  * 
- *   TiledManager.addFlag(flagId)
+ *   zIndex
+ * The image will have z-index equal to the property's value.
  * 
- *     Adds a new flag. This can be handy if you want to add in new flags that currently
- *     are not in the game, for example, if you want to add a special flag to see whether
- *     you could swim in this tile. Note that collision still takes priority over these
- *     flags, however, it is now possible to have an area both be walkable and be passable
- *     by boat or ship, since vehicles now make use of these flags.
+ *   repeatX
+ * Whether it has to repeat horizontally or not.
  * 
- *     flagId
- *     The ID of a flag as a string.
+ * **repeatY**
+ * Whether it has to repeat vertically or not.
  * 
- *   TiledManager.getFlag(flagId)
+ *   deltaX
+ * The horizontal movement when the camera moves.
  * 
- *     Gets the numerical index of the flag added by TiledManager.addFlag, including the
- *     existing flags (boat, ship, airship, ladder, bush, counter, damage, ice).
+ *   deltaY
+ * The vertical movement when the camera moves.
  * 
- *     flagId
- *     The ID of a flag as a string.
+ *   autoX
+ * Setting this will automatically move the image, depending on the value, in
+ * the horizontal direction.
  * 
- *   TiledManager.getFlagLocation(flagId)
+ *   autoY
+ * Setting this will automatically move the image, depending on the value, in
+ * the vertical direction.
  * 
- *     Gets the location of the flag in the tile data. It returns an array with two
- *     integers, the group and the bit flag. The group is essentially the array index,
- *     since the tile flags are stored in an array of 16-bit values.
+ *   hue
+ * The hue of the image.
  * 
- *     flagId
- *     The ID of a flag as a string.
+ *   hideOnLevel
+ * Hide the layer when on a certain level.
  * 
- * Instance methods:
+ *   showOnLevel
+ * Show the layer when on a certain level.
  * 
- *   $gameMap.regionIds(x, y)
+ *   hideOnRegion
+ * Hide the layer when on a certain region.
  * 
- *     Gets all region IDs at the current location.
+ *   hideOnRegions
+ * Hide the layer when on a certain region. This takes an array of possible
+ * regions, and the player only needs to be on one of the layers. Each region is
+ * comma separated.
  * 
- *     x
- *     The x-coordinate
+ *   hideOnAnyRegions
+ * Hide the layer when on a certain region. This functions the same as
+ * hideOnRegions, except it will take all regions on that tile instead of just
+ * the top visible region.
  * 
- *     y
- *     The y-coordinate
+ *   hideOnSwitch
+ * Hide the layer when a certain switch is set.
  * 
- *   $gameMap.renderPassage(x, y, bit[, render[, level]])
+ *   showOnSwitch
+ * Show the layer when a certain switch is set.
  * 
- *     Gets the passage data for the given coordinates on a certain layer ID. If
- *     the layer ID is static (does not hide or show with certain conditions),
- *     then it defaults back to the main layer. This method is primarily created
- *     for plugins that pre-render the collision data.
+ *   transition
+ * This will enable the layer to transition from a shown state to a hidden state.
+ * Set the value as the duration in ticks.
  * 
- *     x
- *     The x-coordinate
+ *   minimumOpacity
+ * The minimum opacity the layer should fade out to.
  * 
- *     y
- *     The y-coordinate
+ * ================================================================================
+ * = Development hooks                                                            =
+ * ================================================================================
  * 
- *     bit
- *     The bit flags it needs to check on
- *     This has been simplified to down (0x01), left (0x02), right (0x04) and up
- *     (0x08).
+ * For the Tiled Plugin, several hooks have been created for plugin developers,
+ * so that they could create their own plugin for Tiled without having to
+ * overwrite functionality.
  * 
- *     render (optional, default: 'main')
- *     The layer it needs to render
+ * TiledManager.addListener(objectName, event, callback, recursive = true)
+ * -----------------------------------------------------------------------
  * 
- *     level (optional, default: 0)
- *     The level the layer is on
+ * Adds a listener for certain events.
  * 
- *   $gameMap.getPassageLayers(level)
+ *   objectName
+ * The name of the object this listener is meant for, for example,
+ * Game_CharacterBase or Game_Player.
  * 
- *     Gets all layers that have their own passage data (collision arrows).
+ *   event
+ * The name of the event it should listen to.
  * 
- *     level
- *     The level the layers need to be taken from
+ *   callback
+ * The callback function. This callback function takes exactly one argument,
+ * as the listener will pass an object to this callback.
  * 
- *   $gameMap.renderIsPassable(x, y, d[, render[, level]])
+ *   recursive
+ * Whether the event callback will be triggered recursively. If an object is
+ * derived from another object, like Game_Player being derived from
+ * Game_CharacterBase, by default it will also call the callbacks from that
+ * object. When set to false, it will skip the current callback if it's not
+ * directly applied to that object.
  * 
- *     Gets the collision data for the given coordinates on a certain layer ID. If
- *     the layer ID is static (does not hide or show with certain conditions),
- *     then it defaults back to the main layer. This method is primarily created
- *     for plugins that pre-render the collision data.
+ * TiledManager.triggerListener(object, event, options = {})
+ * ---------------------------------------------------------
  * 
- *     x
- *     The x-coordinate
+ * This triggers an event for a certain object.
  * 
- *     y
- *     The y-coordinate
+ *   object
+ * Generally the keyword "this", but you can set any object for which the
+ * callbacks should be called.
  * 
- *     d
- *     The direction (down: 2, left: 4, right: 6, up: 8)
+ *   event
+ * The name of the event. that should be called.
  * 
- *     render (optional, default: 'main')
- *     The layer it needs to render
+ *   options
+ * An object that contains properties that can be passed on to the callback.
  * 
- *     level (optional, default: 0)
- *     The level the layer is on
+ * TiledManager.addHideFunction(id, callback, ignore = [])
+ * -------------------------------------------------------
  * 
- *   $gameMap.getIsPassableLayers(level)
+ * Adds a hide function, a function that hides a layer or image based on
+ * certain rules.
  * 
- *     Gets all layers that have their own collision data. This also includes the
- *     arrow collision data.
+ *   id
+ * The ID of the hide function. This will also be used as a property check
+ * for Tiled maps itself. If there isn't a property of the same name as the
+ * ID, it will not execute the callback.
  * 
- *     level
- *     The level the layers need to be taken from
+ *   callback
+ * The callback function that should be run. This should return true if a
+ * layer or image has to be hidden, and false if it should remain visible.
  * 
+ *   ignore
+ * This is mainly used during calculations, and can be left empty. Essentially
+ * you can add groups that should ignore this function. These groups are:
+ * 
+ *  * regions
+ *  * collisions
+ *  * levelChanges
+ *  * tileFlags
+ * 
+ * The only thing it does is making sure functions and methods that belong to
+ * a certain group will ignore this callback.
+ * 
+ * TiledManager.checkLayerHidden(layerData, ignore = [])
+ * -----------------------------------------------------
+ * 
+ * This will check if a certain layer is hidden.
+ * 
+ *   layerData
+ * The Tiled layer data. Note that this isn't the properties data, but the
+ * entire layer data.
+ * 
+ *   ignore
+ * You can specify here which hide functions it should ignore, as specified in
+ * TiledManager.addHideFunction.
+ * 
+ * TiledManager.hasHideProperties(layerData)
+ * -----------------------------------------
+ * 
+ * Checks whether a layer has hide properties.
+ * 
+ *   layerData
+ * The Tiled layer data. Note that this isn't the properties data, but the
+ * entire layer data.
+ * 
+ * TiledManager.addFlag(...flagIds)
+ * --------------------------------
+ * 
+ * Adds a flag or multiple flags.
+ * 
+ *   flagIds
+ * The flag ID you want to add. You can just set multiple of them as multiple
+ * arguments. The flag IDs will be used to check up which bit you need to check,
+ * as well as in the tile property. When setting a tile property using this
+ * flag ID, prepend it with "flagIs" and capitalize the first letter. For
+ * example, if you have a flag ID "monster", you'll use the property
+ * "flagIsMonster".
+ * 
+ * TiledManager.getFlag(flagId)
+ * ----------------------------
+ * 
+ * Get the numerical ID of a certain flag.
+ * 
+ *   flagId
+ * The flag ID.
+ * 
+ * TiledManager.getFlagNames()
+ * ---------------------------
+ * 
+ * Get a list of all flags.
+ * 
+ * TiledManager.getFlagLocation(flagId)
+ * ------------------------------------
+ * 
+ * Get an array with the values group and bit. The group is the group in which
+ * the flag bit resides, and the bit is the bit number of that group.
+ * 
+ *   flagId
+ * The flag ID.
+ * 
+ * TiledManager.createVehicle(vehicleName, vehicleData = false)
+ * ------------------------------------------------------------
+ * 
+ *   vehicleName
+ * The name of the vehicle.
+ * 
+ *   vehicleData
+ * An object containing the vehicle data. When false, it will take default
+ * values, otherwise, it will take an object. This object has essentially
+ * the same structure as the vehicles inside the System.json file. On top
+ * of that, there are a few extra properties.
+ * 
+ *     moveSpeed  
+ * The move speed of the vehicle.
+ * 
+ *     direction  
+ * The initial direction of the vehicle.
+ * 
+ *     tileFlag  
+ * The tile flag it looks for when looking for passability.
+ * 
+ *     hasCollision  
+ * Whether the vehicle has collision. When false, you'll have to stand on
+ * top of it to enter.
+ * 
+ *     resetDirection  
+ * Whether the vehicle has to reset its direction after you exit it.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Objects and events                                                           -
+ * --------------------------------------------------------------------------------
+ * 
+ * These are the objects and their events. Note that events are inherited by
+ * underlying objects, for example, Game_Character inherits all events from
+ * Game_CharacterBase.
+ * 
+ * All elements will pass an object with several properties, which you can
+ * use in your own events.
+ * 
+ * Game_CharacterBase
+ * ===================
+ * 
+ *   stopmovement
+ * Triggers when movement is stopped.
+ * 
+ *     direction  
+ * The direction the character is looking in.
+ * 
+ *   slipperyfloor
+ * Triggers when stepping on a slippery floor tile.
+ * 
+ *     direction  
+ * The direction the character is looking in.
+ * 
+ * Game_Map
+ * =========
+ * 
+ *   changelevel
+ * Triggers when changing layer levels.
+ * 
+ * oldLevel
+ * --------
+ * The old level.
+ * 
+ * newLevel
+ * --------
+ * The new level.
+ * 
+ * 
+ *
  */
-
+/*~struct~Vehicle:
+ * @param vehicleName
+ * @text Vehicle Name
+ * @desc A name for the vehicle to identify this vehicle.
+ * 
+ * @param characterName
+ * @text Character Image File Name
+ * @desc The image used for the vehicle.
+ * @type file
+ * @dir img/characters/
+ * @requre 1
+ * 
+ * @param characterIndex
+ * @text Character Image Index
+ * @desc The index used for the character image.
+ * @type number
+ * @min 0
+ * @max 7
+ * @default 0
+ * 
+ * @param bgm
+ * @text Background Music
+ * @type struct<Bgm>
+ * @default {"name":"","pan":"0","pitch":"0","volume":"0"}
+ * 
+ * @param moveSpeed
+ * @text Move Speed
+ * @desc The move speed for this vehicle.
+ * @type number
+ * @min 1
+ * @default 4
+ * 
+ * @param direction
+ * @text Initial Direction
+ * @desc The initial direction of the vehicle, and the direction the vehicle will be set to when reset.
+ * @type select
+ * @option Down
+ * @value 2
+ * @option Left
+ * @value 4
+ * @option Right
+ * @value 6
+ * @option Up
+ * @value 8
+ * @default 4
+ * 
+ * @param tileFlag
+ * @text Tile Flag Passability
+ * @desc The tile flag used to check the passability of this vehicle. Leave blank to have no tile restrictions.
+ * 
+ * @param hasCollision
+ * @text Has Collision
+ * @desc Whether the vehicle has collision detection from other entities.
+ * @type boolean
+ * @default true
+ * 
+ * @param resetDirection
+ * @text Reset Direction
+ * @desc Whether the vehicle direction has to be reset when exiting.
+ * @type boolean
+ * @default true
+ */
+/*~struct~Bgm:
+ * @param name
+ * @text Song Name
+ * @desc The song name used.
+ * @type file
+ * @dir audio/bgm/
+ * @require 1
+ * 
+ * @param pan
+ * @text Pan
+ * @type number
+ * 
+ * @param pitch
+ * @text Pitch
+ * @type number
+ * 
+ * @param volume
+ * @text Volume
+ * @type number
+ */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -1394,12 +1850,13 @@ __webpack_require__(15);
 
 __webpack_require__(16);
 
+__webpack_require__(17);
+
 /* INITIALIZES LISTENERS */
 
 // Add floor damage while on a slippery floor
 TiledManager.addListener(Game_Player, 'slipperyfloor', function (options) {
-    var d = options.d;
-
+    var d = options.direction;
     $gameParty.members().forEach(function (actor) {
         actor.checkFloorEffect();
     });
@@ -1407,6 +1864,26 @@ TiledManager.addListener(Game_Player, 'slipperyfloor', function (options) {
 });
 
 /* INITIALIZES HIDE FUNCTIONS */
+
+TiledManager.addHideFunction('hideOnLevel', function (layerData) {
+    /* Hide if player is on certain level */
+    var level = $gameMap.currentMapLevel;
+    var hideLayer = false;
+    if (parseInt(layerData.properties.hideOnLevel) === level) {
+        hideLayer = true;
+    }
+    return hideLayer;
+});
+
+TiledManager.addHideFunction('showOnLevel', function (layerData) {
+    /* Show if player is on certain level */
+    var level = $gameMap.currentMapLevel;
+    var hideLayer = false;
+    if (parseInt(layerData.properties.showOnLevel) !== level) {
+        hideLayer = true;
+    }
+    return hideLayer;
+});
 
 TiledManager.addHideFunction('hideOnRegion', function (layerData) {
     /* Hide if player is on certain region */
@@ -1465,6 +1942,15 @@ TiledManager.addFlag('boat', 'ship', 'airship');
 TiledManager.addFlag('ladder', 'bush', 'counter', 'damage');
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp');
 TiledManager.addFlag('heal');
+
+TiledManager.createVehicle('boat', true);
+TiledManager.createVehicle('ship', true);
+TiledManager.createVehicle('airship', true);
+
+/* LOAD CUSTOM DATA FROM THE PARAMTERS */
+
+TiledManager.getParameterFlags();
+TiledManager.getParameterVehicles();
 
 /***/ }),
 /* 2 */
@@ -1672,6 +2158,8 @@ function TiledManager() {
 
 window.TiledManager = TiledManager;
 
+var pluginParams = PluginManager.parameters("YED_Tiled");
+
 var _listeners = {};
 var _hideFunctions = {};
 var _hideIgnoreFunctions = {
@@ -1682,8 +2170,24 @@ var _hideIgnoreFunctions = {
 };
 var _tileFlags = {};
 var _tileFlagIndex = 1;
+var _vehicles = {};
+var _vehiclesByIndex = [];
 
-TiledManager.addListener = function (objectName, listener, callback) {
+var _fullVehicleData = {
+    bgm: {
+        name: '',
+        pan: 0,
+        pitch: 100,
+        volume: 90
+    },
+    characterIndex: 0,
+    characterName: "",
+    startMapId: 0,
+    startX: 0,
+    startY: 0
+};
+
+TiledManager.addListener = function (objectName, event, callback) {
     var recursive = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
 
     if (typeof objectName === 'function') {
@@ -1692,26 +2196,26 @@ TiledManager.addListener = function (objectName, listener, callback) {
     if (!_listeners[objectName]) {
         _listeners[objectName] = {};
     }
-    if (!_listeners[objectName][listener]) {
-        _listeners[objectName][listener] = [];
+    if (!_listeners[objectName][event]) {
+        _listeners[objectName][event] = [];
     }
     callback.recursive = !!recursive;
-    _listeners[objectName][listener].push(callback);
+    _listeners[objectName][event].push(callback);
 };
 
-TiledManager.triggerListener = function (object, listener) {
+TiledManager.triggerListener = function (object, event) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
     var objectName = object.constructor.name;
-    if (!_listeners[objectName] || !_listeners[objectName][listener]) {
+    if (!_listeners[objectName] || !_listeners[objectName][event]) {
         return false;
     }
     var top = true;
     var proto = object.__proto__;
     while (proto) {
         objectName = proto.constructor.name;
-        if (_listeners[objectName] && _listeners[objectName][listener]) {
-            _listeners[objectName][listener].forEach(function (callback) {
+        if (_listeners[objectName] && _listeners[objectName][event]) {
+            _listeners[objectName][event].forEach(function (callback) {
                 if (top || callback.recursive) {
                     callback.call(object, options);
                 }
@@ -1783,6 +2287,86 @@ TiledManager.getFlagLocation = function (flagId) {
     var bit = 1 << flag % 16 & 0xffff;
     var group = Math.floor(flag / 16);
     return [group, bit];
+};
+
+TiledManager.getParameterFlags = function () {
+    if (!!pluginParams['Custom Tile Flags']) {
+        var tileFlags = JSON.parse(pluginParams['Custom Tile Flags']);
+        TiledManager.addFlag.apply(this, tileFlags);
+    }
+};
+
+/* VEHICLES */
+TiledManager.createVehicle = function (vehicleName) {
+    var vehicleData = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+    if (!vehicleData) {
+        vehicleData = Object.assign({}, _fullVehicleData, {
+            bgm: Object.assign({}, _fullVehicleData.bgm)
+        });
+    } else if (vehicleData !== true) {
+        vehicleData = Object.assign({}, _fullVehicleData, vehicleData, {
+            bgm: Object.assign({}, _fullVehicleData.bgm, vehicleData.bgm)
+        });
+    }
+    var vehicle = new Game_Vehicle(vehicleName, vehicleData);
+    _vehicles[vehicleName] = vehicle;
+    _vehiclesByIndex.push(vehicleName);
+};
+
+TiledManager.refreshVehicles = function () {
+    var vehicles = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+
+    _vehiclesByIndex.forEach(function (vehicleName) {
+        if (vehicles.length === 0 || vehicles.indexOf(vehicleName) > -1) {
+            _vehicles[vehicleName].refresh();
+        }
+    });
+};
+
+TiledManager.getAllVehicles = function () {
+    var vehicles = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+
+    var returnVehicles = [];
+    _vehiclesByIndex.forEach(function (vehicleName) {
+        if (vehicles.length === 0 || vehicles.indexOf(vehicleName) > -1) {
+            returnVehicles.push(_vehicles[vehicleName]);
+        }
+    });
+    return returnVehicles;
+};
+
+TiledManager.getVehicle = function (id) {
+    if (isNaN(id)) {
+        if (_vehicles[id]) {
+            return _vehicles[id];
+        }
+    } else {
+        if (id < _vehiclesByIndex.length) {
+            return _vehicles[_vehiclesByIndex[id]];
+        }
+    }
+    return null;
+};
+
+TiledManager.updateVehicles = function () {
+    var vehicles = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+
+    _vehiclesByIndex.forEach(function (vehicleName) {
+        if (vehicles.length === 0 || vehicles.indexOf(vehicleName) > -1) {
+            _vehicles[vehicleName].update();
+        }
+    });
+};
+
+TiledManager.getParameterVehicles = function () {
+    if (!!pluginParams['Custom Vehicles']) {
+        var vehicles = JSON.parse(pluginParams['Custom Vehicles']);
+        vehicles.forEach(function (vehicle) {
+            var vehicleData = JSON.parse(vehicle);
+            TiledManager.createVehicle(vehicleData.vehicleName, vehicleData);
+        });
+    }
 };
 
 /***/ }),
@@ -2869,6 +3453,7 @@ Game_Map.prototype._setupTiledEvents = function () {
 
                     if (!!object.properties.vehicle) {
                         event = this.vehicle(object.properties.vehicle);
+                        this._vehicles.push(object.properties.vehicle);
                     } else {
                         var eventId = parseInt(object.properties.eventId);
                         event = this._events[eventId];
@@ -2887,6 +3472,7 @@ Game_Map.prototype._setupTiledEvents = function () {
                         y += 1;
                     }
                     if (!!object.properties.vehicle) {
+                        event.loadSystemSettings();
                         event.setLocation(this.mapId(), x, y);
                     } else {
                         event.locate(x, y);
@@ -3128,7 +3714,12 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     if (mapLevelChangeValue < 0) {
         return false;
     }
+    var oldValue = this.currentMapLevel;
     this.currentMapLevel = mapLevelChangeValue;
+    TiledManager.triggerListener(this, 'levelchanged', {
+        oldLevel: oldValue,
+        newLevel: mapLevelChangeValue
+    });
     return true;
 };
 
@@ -3449,7 +4040,7 @@ Game_Map.prototype.getTileProperties = function (x, y) {
     var index = x + this.width() * y;
 
     if (layer > -1) {
-        if (this.tiledData.layers[layer]) {
+        if (this.tiledData.layers[layer] && this.tiledData.layers[layer].data) {
             var tileId = this.tiledData.layers[layer].data[x];
             var tileset = this._getTileset(tileId);
             if (tileset && tileset.tileproperties) {
@@ -3460,7 +4051,7 @@ Game_Map.prototype.getTileProperties = function (x, y) {
     }
     var tileProperties = {};
     this.tiledData.layers.forEach(function (layerData, i) {
-        if (layerData && layerData.properties) {
+        if (layerData && layerData.data && layerData.properties) {
             if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
                 var props = _this2.getTileProperties(x, y, i);
                 if (Object.keys(props).length > 0) {
@@ -3470,6 +4061,76 @@ Game_Map.prototype.getTileProperties = function (x, y) {
         }
     });
     return tileProperties;
+};
+
+/* Custom vehicles */
+var _createVehicles = Game_Map.prototype.createVehicles;
+Game_Map.prototype.createVehicles = function () {
+    if (!this.isTiledMap()) {
+        _createVehicles.call(this);
+    }
+    this._vehicles = [];
+};
+
+var _refreshVehicles = Game_Map.prototype.refereshVehicles;
+Game_Map.prototype.refereshVehicles = function () {
+    if (!this.isTiledMap()) {
+        return _refreshVehicles.call(this);
+    }
+    return TiledManager.refreshVehicles(this._vehicles);
+};
+
+var _vehicles = Game_Map.prototype.vehicles;
+Game_Map.prototype.vehicles = function () {
+    var getNames = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+
+    if (!this.isTiledMap()) {
+        return _vehicles.call(this);
+    }
+    if (getNames) {
+        return this._vehicles;
+    }
+    return TiledManager.getAllVehicles(this._vehicles);
+};
+
+var _vehicle = Game_Map.prototype.vehicle;
+Game_Map.prototype.vehicle = function (type) {
+    if (!this.isTiledMap()) {
+        return _vehicles.call(this, type);
+    }
+    return TiledManager.getVehicle(type);
+};
+
+var _boat = Game_Map.prototype.boat;
+Game_Map.prototype.boat = function () {
+    if (!this.isTiledMap()) {
+        return _boat.call(this);
+    }
+    return TiledManager.getVehicle('boat');
+};
+
+var _ship = Game_Map.prototype.ship;
+Game_Map.prototype.ship = function () {
+    if (!this.isTiledMap()) {
+        return _ship.call(this);
+    }
+    return TiledManager.getVehicle('ship');
+};
+
+var _airship = Game_Map.prototype.airship;
+Game_Map.prototype.airship = function () {
+    if (!this.isTiledMap()) {
+        return _airship.call(this);
+    }
+    return TiledManager.getVehicle('airship');
+};
+
+var _updateVehicles = Game_Map.prototype.updateVehicles;
+Game_Map.prototype.updateVehicles = function () {
+    if (!this.isTiledMap()) {
+        _updateVehicles.call(this);
+    }
+    TiledManager.updateVehicles(this._vehicles);
 };
 
 /***/ }),
@@ -3530,15 +4191,33 @@ Game_CharacterBase.prototype.updateMove = function () {
             this._locationHeight = newLocationHeight;
         }
     }
-    if (!this.isMoving() && $gameMap.isSlipperyFloor(this._x, this._y)) {
-        TiledManager.triggerListener(this, 'slipperyfloor', {
-            d: d
+    if (!this.isMoving()) {
+        TiledManager.triggerListener(this, 'stopmovement', {
+            direction: d
         });
+        if ($gameMap.isSlipperyFloor(this._x, this._y)) {
+            TiledManager.triggerListener(this, 'slipperyfloor', {
+                direction: d
+            });
+        }
     }
 };
 
 Game_CharacterBase.prototype.locationHeight = function () {
     return this._locationHeight || 0;
+};
+
+var _isCollideWithVehicles = Game_CharacterBase.prototype.isCollidedWithVehicles;
+Game_CharacterBase.prototype.isCollidedWithVehicles = function (x, y) {
+    if (!_isCollideWithVehicles.call(this, x, y)) {
+        var vehicles = $gameMap.vehicles();
+        for (var i = 0; i < vehicles.length; i++) {
+            if (!(vehicles[i].vehicleData && (!vehicles[i].vehicleData.hasOwnProperty('hasCollision') || vehicles[i].vehicleData.hasCollision === 'true' || vehicles[i].vehicleData.hasCollision === true)) || vehicles[i].posNt(x, y)) {
+                return true;
+            }
+        }
+    }
+    return false;
 };
 
 /***/ }),
@@ -3652,8 +4331,154 @@ Game_Player.prototype.isOnHealFloor = function () {
     return $gameMap.isHealFloor(this.x, this.y) && !this.isInAirship();
 };
 
+var _getOnVehicle = Game_Player.prototype.getOnVehicle;
+Game_Player.prototype.getOnVehicle = function () {
+    var _this = this;
+
+    if (!$gameMap.isTiledMap()) {
+        return _getOnVehicle.call(this);
+    }
+    var direction = this.direction();
+    var x1 = this.x;
+    var y1 = this.y;
+    var x2 = $gameMap.roundXWithDirection(x1, direction);
+    var y2 = $gameMap.roundYWithDirection(y1, direction);
+    if ($gameMap.airship().pos(x1, y1)) {
+        this._vehicleType = 'airship';
+    } else if ($gameMap.ship().pos(x2, y2)) {
+        this._vehicleType = 'ship';
+    } else if ($gameMap.boat().pos(x2, y2)) {
+        this._vehicleType = 'boat';
+    } else {
+        var vehicles = $gameMap.vehicles(true);
+        vehicles.forEach(function (vehicleName) {
+            var vehicle = $gameMap.vehicle(vehicleName);
+            if (vehicle.vehicleData) {
+                if (!vehicle.vehicleData.hasOwnProperty('hasCollision') || vehicle.vehicleData.hasCollision === 'true' || vehicle.vehicleData.hasCollision === true) {
+                    if (vehicle.pos(x2, y2)) {
+                        _this._vehicleType = vehicleName;
+                    }
+                } else {
+                    if (vehicle.pos(x1, y1)) {
+                        _this._vehicleType = vehicleName;
+                    }
+                }
+            } else if (vehicle.pos(x2, y2)) {
+                _this._vehicleType = vehicleName;
+            }
+        });
+    }
+    if (this.isInVehicle()) {
+        this._vehicleGettingOn = true;
+        if (!this.isInAirship()) {
+            this.forceMoveForward();
+        }
+        this.gatherFollowers();
+    }
+    return this._vehicleGettingOn;
+};
+
+var _isInVehicle = Game_Player.prototype.isInVehicle;
+Game_Player.prototype.isInVehicle = function () {
+    if (!$gameMap.isTiledMap()) {
+        return _isInVehicle.call(this);
+    }
+    return $gameMap.vehicles(true).indexOf(this._vehicleType) > -1;
+};
+
 /***/ }),
 /* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _initialize = Game_Vehicle.prototype.initialize;
+Game_Vehicle.prototype.initialize = function (type) {
+    var vehicleData = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+    if (vehicleData) {
+        this.vehicleData = vehicleData;
+    }
+    _initialize.call(this, type);
+};
+
+var _initMoveSpeed = Game_Vehicle.prototype.initMoveSpeed;
+Game_Vehicle.prototype.initMoveSpeed = function () {
+    _initMoveSpeed.call(this);
+    if (!!this.vehicleData && this.vehicleData.moveSpeed) {
+        this.setMoveSpeed(parseInt(this.vehicleData.moveSpeed));
+    }
+};
+
+var _vehicle = Game_Vehicle.prototype.vehicle;
+Game_Vehicle.prototype.vehicle = function () {
+    var vehicleData = _vehicle.call(this);
+    if (!vehicleData && !!this.vehicleData) {
+        return this.vehicleData;
+    }
+    return vehicleData;
+};
+
+var _isMapPassable = Game_Vehicle.prototype.isMapPassable;
+Game_Vehicle.prototype.isMapPassable = function (x, y, d) {
+    var render = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
+    if (!$gameMap.isTiledMap()) {
+        return _isMapPassable.call(this, x, y, d);
+    }
+    var x2 = $gameMap.roundXWithDirection(x, d);
+    var y2 = $gameMap.roundYWithDirection(y, d);
+    if (this.isBoat()) {
+        return $gameMap.isBoatPassable(x2, y2, render);
+    } else if (this.isShip()) {
+        return $gameMap.isShipPassable(x2, y2, render);
+    } else if (this.isAirship()) {
+        return true;
+    } else {
+        var vehicleData = this.vehicle();
+        if (!!vehicleData) {
+            if (!!vehicleData.tileFlag) {
+                return $gameMap.checkHasTileFlag(x2, y2, vehicleData.tileFlag, render);
+            }
+            if (vehicleData.tileFlag === '') {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+Game_Vehicle.prototype.loadSystemSettings = function () {
+    var vehicle = window.$dataSystem ? this.vehicle() : null;
+    if (vehicle) {
+        this._mapId = vehicle.startMapId;
+        this.setPosition(vehicle.startX, vehicle.startY);
+        this.setImage(vehicle.characterName, vehicle.characterIndex);
+    }
+};
+
+var _resetDirection = Game_Vehicle.prototype.resetDirection;
+Game_Vehicle.prototype.resetDirection = function () {
+    if (!!this.vehicleData && !!this.vehicleData.direction) {
+        this.setDirection(parseInt(this.vehicleData.direction));
+    } else {
+        _resetDirection.call(this);
+    }
+};
+
+Game_Vehicle.prototype.getOff = function () {
+    this._driving = false;
+    this.setWalkAnime(false);
+    this.setStepAnime(false);
+    if (!this.vehicleData || !this.vehicleData.hasOwnProperty('resetDirection') || this.vehicleData.resetDirection === 'true') {
+        this.resetDirection();
+    }
+    $gameSystem.replayWalkingBgm();
+};
+
+/***/ }),
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3666,7 +4491,7 @@ Sprite_Character.prototype.update = function () {
 };
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3737,7 +4562,8 @@ Spriteset_Map.prototype.loadTileset = function () {
 var _update = Spriteset_Map.prototype.update;
 Spriteset_Map.prototype.update = function () {
     _update.call(this);
-    this._updateHideOnLevel();
+    //Disabed updateHideOnLevel, since it got moved to the general layer hide functions
+    //this._updateHideOnLevel();
     this._updateHideOnSpecial();
     this._tilemap.updateParallax();
 };

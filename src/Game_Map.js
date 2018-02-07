@@ -629,6 +629,7 @@ Game_Map.prototype._setupTiledEvents = function () {
 
             if(!!object.properties.vehicle) {
                 event = this.vehicle(object.properties.vehicle);
+                this._vehicles.push(object.properties.vehicle);
             } else {
                 let eventId = parseInt(object.properties.eventId);
                 event = this._events[eventId];
@@ -647,6 +648,7 @@ Game_Map.prototype._setupTiledEvents = function () {
                 y += 1;
             }
             if(!!object.properties.vehicle) {
+                event.loadSystemSettings();
                 event.setLocation(this.mapId(), x, y);
             } else {
                 event.locate(x, y);
@@ -846,7 +848,12 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     if (mapLevelChangeValue < 0) {
         return false;
     }
+    let oldValue = this.currentMapLevel;
     this.currentMapLevel = mapLevelChangeValue;
+    TiledManager.triggerListener(this, 'levelchanged', {
+        oldLevel: oldValue,
+        newLevel: mapLevelChangeValue
+    })
     return true;
 };
 
@@ -1096,7 +1103,7 @@ Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden =
     let index = x + this.width() * y;
     
 	if(layer > -1) {
-		if(this.tiledData.layers[layer]) {
+		if(this.tiledData.layers[layer] && this.tiledData.layers[layer].data) {
 			let tileId = this.tiledData.layers[layer].data[x];
 			let tileset = this._getTileset(tileId);
 			if(tileset && tileset.tileproperties) {
@@ -1107,7 +1114,7 @@ Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden =
 	}
 	let tileProperties = {};
 	this.tiledData.layers.forEach((layerData, i) => {
-		if(layerData && layerData.properties) {
+		if(layerData && layerData.data && layerData.properties) {
             if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
                 let props = this.getTileProperties(x, y, i);
                 if(Object.keys(props).length > 0) {
@@ -1118,3 +1125,72 @@ Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden =
 	});
 	return tileProperties;
 }
+
+/* Custom vehicles */
+let _createVehicles = Game_Map.prototype.createVehicles
+Game_Map.prototype.createVehicles = function() {
+    if (!this.isTiledMap()) {
+        _createVehicles.call(this);
+    }
+    this._vehicles = [];
+
+};
+
+let _refreshVehicles = Game_Map.prototype.refereshVehicles
+Game_Map.prototype.refereshVehicles = function() {
+    if (!this.isTiledMap()) {
+        return _refreshVehicles.call(this);
+    }
+    return TiledManager.refreshVehicles(this._vehicles);
+};
+
+let _vehicles = Game_Map.prototype.vehicles
+Game_Map.prototype.vehicles = function(getNames = false) {
+    if (!this.isTiledMap()) {
+        return _vehicles.call(this);
+    }
+    if(getNames) {
+        return this._vehicles;
+    }
+    return TiledManager.getAllVehicles(this._vehicles);
+};
+
+let _vehicle = Game_Map.prototype.vehicle
+Game_Map.prototype.vehicle = function(type) {
+    if (!this.isTiledMap()) {
+        return _vehicles.call(this, type);
+    }
+    return TiledManager.getVehicle(type);
+}
+
+let _boat = Game_Map.prototype.boat
+Game_Map.prototype.boat = function() {
+    if (!this.isTiledMap()) {
+        return _boat.call(this);
+    }
+    return TiledManager.getVehicle('boat');
+};
+
+let _ship = Game_Map.prototype.ship
+Game_Map.prototype.ship = function() {
+    if (!this.isTiledMap()) {
+        return _ship.call(this);
+    }
+    return TiledManager.getVehicle('ship');
+};
+
+let _airship = Game_Map.prototype.airship
+Game_Map.prototype.airship = function() {
+    if (!this.isTiledMap()) {
+        return _airship.call(this);
+    }
+    return TiledManager.getVehicle('airship');
+};
+
+let _updateVehicles = Game_Map.prototype.updateVehicles
+Game_Map.prototype.updateVehicles = function() {
+    if (!this.isTiledMap()) {
+        _updateVehicles.call(this);
+    }
+    TiledManager.updateVehicles(this._vehicles);
+};

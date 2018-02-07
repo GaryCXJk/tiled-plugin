@@ -38,13 +38,31 @@ Game_CharacterBase.prototype.updateMove = function() {
             this._locationHeight = newLocationHeight;
         }
     }
-    if(!this.isMoving() && $gameMap.isSlipperyFloor(this._x, this._y)) {
-        TiledManager.triggerListener(this, 'slipperyfloor', {
-            d
+    if(!this.isMoving()) {
+        TiledManager.triggerListener(this, 'stopmovement', {
+            direction: d
         })
+        if($gameMap.isSlipperyFloor(this._x, this._y)) {
+            TiledManager.triggerListener(this, 'slipperyfloor', {
+                direction: d
+            })
+        }
     }
 }
 
 Game_CharacterBase.prototype.locationHeight = function() {
 	return this._locationHeight || 0
 }
+
+let _isCollideWithVehicles = Game_CharacterBase.prototype.isCollidedWithVehicles
+Game_CharacterBase.prototype.isCollidedWithVehicles = function(x, y) {
+    if(!_isCollideWithVehicles.call(this, x, y)) {
+        let vehicles = $gameMap.vehicles();
+        for(let i = 0; i < vehicles.length; i++) {
+            if(!(vehicles[i].vehicleData && (!vehicles[i].vehicleData.hasOwnProperty('hasCollision') || vehicles[i].vehicleData.hasCollision === 'true' || vehicles[i].vehicleData.hasCollision === true)) || vehicles[i].posNt(x, y)) {
+                return true;
+            }
+        }
+    }
+    return false;
+};

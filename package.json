@@ -7,10 +7,16 @@
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
     "filewatcher-webpack-plugin": "^1.2.0",
+    "html-pdf": "^2.2.0",
+    "markdown-pdf": "^8.1.1",
+    "markdown-toc": "^1.2.0",
+    "remarkable": "^1.7.1",
+    "through": "^2.3.8",
     "webpack": "^3.10.0"
   },
   "scripts": {
     "webpack": "webpack",
-    "webpack-watch": "webpack --watch"
+    "webpack-watch": "webpack --watch",
+    "build-pdf": "node build-pdf"
   }
 }

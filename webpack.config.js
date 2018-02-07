@@ -2,6 +2,16 @@ var path = require('path');
 var webpack = require('webpack');
 var fs = require('fs');
 const FilewatcherPlugin = require("filewatcher-webpack-plugin");
+var buildpdf = require('./build-pdf');
+
+var getBanner = function() {
+	var header = fs.readFileSync('./src/header.js', 'utf8');
+	var help = fs.readFileSync('./doc/help.js', 'utf8');
+	
+	help = help.replace('/*', ' *').replace('*/', '*');
+	header = header.replace('@help', '@help\n' + help);
+	return header;
+}
 
 module.exports = {
     entry: './src/index.js',
@@ -25,10 +35,10 @@ module.exports = {
     },
 	plugins: [
 		new FilewatcherPlugin({
-			watchFileRegex: ['./src/header.js']
+			watchFileRegex: ['./src/header.js', './doc/help.js']
 		}),
 		new webpack.BannerPlugin({
-			banner: fs.readFileSync('./src/header.js', 'utf8'),
+			banner: getBanner(),
 			raw: true
 		})
 	],

@@ -41,7 +41,8 @@ Spriteset_Map.prototype.loadTileset = function () {
 let _update = Spriteset_Map.prototype.update;
 Spriteset_Map.prototype.update = function () {
     _update.call(this);
-    this._updateHideOnLevel();
+    //Disabed updateHideOnLevel, since it got moved to the general layer hide functions
+    //this._updateHideOnLevel();
     this._updateHideOnSpecial();
     this._tilemap.updateParallax();
 };

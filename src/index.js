@@ -10,6 +10,7 @@ import "./Game_Screen";
 import "./Game_CharacterBase";
 import "./Game_Actor";
 import "./Game_Player";
+import "./Game_Vehicle";
 import "./Sprite_Character";
 import "./Spriteset_Map";
 
@@ -17,7 +18,7 @@ import "./Spriteset_Map";
 
 // Add floor damage while on a slippery floor
 TiledManager.addListener(Game_Player, 'slipperyfloor', function(options) {
-    const {d} = options
+    const d = options.direction
     $gameParty.members().forEach(actor => {
         actor.checkFloorEffect();
     })
@@ -25,6 +26,26 @@ TiledManager.addListener(Game_Player, 'slipperyfloor', function(options) {
 })
 
 /* INITIALIZES HIDE FUNCTIONS */
+
+TiledManager.addHideFunction('hideOnLevel', function(layerData) {
+    /* Hide if player is on certain level */
+    let level = $gameMap.currentMapLevel;
+    let hideLayer = false;
+    if(parseInt(layerData.properties.hideOnLevel) === level) {
+        hideLayer = true;
+    }
+    return hideLayer;
+});
+
+TiledManager.addHideFunction('showOnLevel', function(layerData) {
+    /* Show if player is on certain level */
+    let level = $gameMap.currentMapLevel;
+    let hideLayer = false;
+    if(parseInt(layerData.properties.showOnLevel) !== level) {
+        hideLayer = true;
+    }
+    return hideLayer;
+});
 
 TiledManager.addHideFunction('hideOnRegion', function(layerData) {
     /* Hide if player is on certain region */
@@ -81,3 +102,12 @@ TiledManager.addFlag('boat', 'ship', 'airship')
 TiledManager.addFlag('ladder', 'bush', 'counter', 'damage')
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp')
 TiledManager.addFlag('heal')
+
+TiledManager.createVehicle('boat', true)
+TiledManager.createVehicle('ship', true)
+TiledManager.createVehicle('airship', true)
+
+/* LOAD CUSTOM DATA FROM THE PARAMTERS */
+
+TiledManager.getParameterFlags()
+TiledManager.getParameterVehicles()
