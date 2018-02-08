@@ -207,6 +207,9 @@
  * Like stated before, with this plugin you can use practically unlimited
  * layers. By default, a layer has no z-index, which means it'll always be at
  * the bottom, or stacked on top of other layers and objects with no z-index.
+ * You can also specify a custom z-index by adding a property zIndex. If the
+ * z-index is lower than that of the player, it will render below the player,
+ * if the z-index is higher than the player, though, it will render above.
  * 
  * --------------------------------------------------------------------------------
  * - Tilesets                                                                     -
@@ -256,6 +259,23 @@
  * To place a vehicle in your map, use the object property vehicle, and set as
  * the value the name of the vehicle you want to add. You can use "boat", "ship"
  * or "airship", or any custom made vehicle you have made through plugins.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Images                                                                       -
+ * --------------------------------------------------------------------------------
+ * 
+ * Images can now directly be added to Tiled, both as parallax images as well as
+ * regular images. By default, images added through Tiled will act like regular
+ * images, and will be placed in the layer order you've set in the Tiled map.
+ * However, you can add several properties to make images a bit more dynamic. For
+ * example, you can use the same hide functions as for regular layers.
+ * 
+ * The main feature for images that most would want to use though is parallax
+ * images. To set an image as a parallax, you can set the repeatX and repeatY to
+ * true, so that the image will tile. You can also set a custom scroll speed when
+ * the camera is moving by changing the deltaX and deltaY. A delta of 0 means that
+ * the image stays stationary on that axis, while a delta of 1 makes the image
+ * scroll with the same speed as the player.
  * 
  * --------------------------------------------------------------------------------
  * - Extra notes on parallax images                                               -
@@ -1686,13 +1706,19 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
         key: '_createImageLayer',
         value: function _createImageLayer(layerData, id) {
             var zIndex = 0;
-            var repeatX = true;
-            var repeatY = true;
-            var deltaX = 0;
-            var deltaY = 0;
+            var repeatX = false;
+            var repeatY = false;
+            var deltaX = 1;
+            var deltaY = 1;
             var autoX = 0;
             var autoY = 0;
             var hue = 0;
+            var viewportX = 0;
+            var viewportY = 0;
+            var viewportWidth = 0;
+            var viewportHeight = 0;
+            var viewportDeltaX = 0;
+            var viewportDeltaY = 0;
 
             if (!!layerData.properties) {
                 if (!!layerData.properties.ignoreLoading) {
@@ -1707,10 +1733,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 if (layerData.properties.hasOwnProperty('repeatY')) {
                     repeatY = !!layerData.properties.repeatY;
                 }
-                if (!!layerData.properties.deltaX) {
+                if (layerData.properties.hasOwnProperty('deltaX')) {
                     deltaX = layerData.properties.deltaX;
                 }
-                if (!!layerData.properties.deltaY) {
+                if (layerData.properties.hasOwnProperty('deltaY')) {
                     deltaY = layerData.properties.deltaY;
                 }
                 if (!!layerData.properties.autoX) {
@@ -1721,6 +1747,24 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 }
                 if (!!layerData.properties.hue) {
                     hue = parseInt(layerData.properties.hue);
+                }
+                if (layerData.properties.hasOwnProperty('viewportX')) {
+                    viewportX = layerData.properties.viewportX;
+                }
+                if (layerData.properties.hasOwnProperty('viewportY')) {
+                    viewportX = layerData.properties.viewportY;
+                }
+                if (layerData.properties.hasOwnProperty('viewportWidth')) {
+                    viewportWidth = layerData.properties.viewportWidth;
+                }
+                if (layerData.properties.hasOwnProperty('viewportHeight')) {
+                    viewportHeight = layerData.properties.viewportHeight;
+                }
+                if (layerData.properties.hasOwnProperty('viewportDeltaX')) {
+                    viewportDeltaX = layerData.properties.viewportDeltaX;
+                }
+                if (layerData.properties.hasOwnProperty('viewportDeltaY')) {
+                    viewportDeltaY = layerData.properties.viewportDeltaY;
                 }
             }
 
@@ -1754,6 +1798,19 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             layer.stepAutoY = autoY;
             layer.autoX = 0;
             layer.autoY = 0;
+            if (viewportWidth || viewportHeight) {
+                viewportWidth = viewportWidth || Graphics.width;
+                viewportHeight = viewportHeight || Graphics.height;
+                var layerMask = new PIXI.Graphics();
+                layerMask.baseX = viewportX;
+                layerMask.baseY = viewportY;
+                layerMask.baseWidth = viewportWidth;
+                layerMask.baseHeight = viewportHeight;
+                layerMask.deltaX = viewportDeltaX;
+                layerMask.deltaY = viewportDeltaY;
+                layer.mask = layerMask;
+                layer.hasViewport = true;
+            }
             this._parallaxlayers.push(layer);
             this.addChild(layer);
         }
@@ -1798,6 +1855,13 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 } else {
                     layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
                     layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                }
+                if (layer.hasViewport) {
+                    var viewportX = layer.mask.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
+                    var viewportY = layer.mask.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+                    layer.mask.clear();
+                    layer.mask.beginFill(0xffffff, 1);
+                    layer.mask.drawRect(viewportX, viewportY, layer.mask.baseWidth, layer.mask.baseHeight);
                 }
             });
         }

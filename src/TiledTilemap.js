@@ -556,6 +556,18 @@ export class TiledTilemap extends ShaderTilemap {
 			if(layerData.properties.hasOwnProperty('viewportY')) {
 				viewportX = layerData.properties.viewportY;
 			}
+			if(layerData.properties.hasOwnProperty('viewportWidth')) {
+				viewportWidth = layerData.properties.viewportWidth;
+			}
+			if(layerData.properties.hasOwnProperty('viewportHeight')) {
+				viewportHeight = layerData.properties.viewportHeight;
+			}
+			if(layerData.properties.hasOwnProperty('viewportDeltaX')) {
+				viewportDeltaX = layerData.properties.viewportDeltaX;
+			}
+			if(layerData.properties.hasOwnProperty('viewportDeltaY')) {
+				viewportDeltaY = layerData.properties.viewportDeltaY;
+			}
         }
 
         let layer;
@@ -594,9 +606,8 @@ export class TiledTilemap extends ShaderTilemap {
 			let layerMask = new PIXI.Graphics();
 			layerMask.baseX = viewportX;
 			layerMask.baseY = viewportY;
-			layerMask.clear();
-			layerMask.beginFill(0xffffff, 1);
-			layerMask.drawRect(0, 0, viewportWidth, viewportHeight);
+			layerMask.baseWidth = viewportWidth;
+			layerMask.baseHeight = viewportHeight;
 			layerMask.deltaX = viewportDeltaX;
 			layerMask.deltaY = viewportDeltaY;
 			layer.mask = layerMask;
@@ -645,8 +656,11 @@ export class TiledTilemap extends ShaderTilemap {
                 layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
             }
 			if(layer.hasViewport) {
-				layer.mask.x = layer.mask.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
-				layer.mask.y = layer.mask.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+				let viewportX = layer.mask.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
+				let viewportY = layer.mask.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+				layer.mask.clear();
+				layer.mask.beginFill(0xffffff, 1);
+				layer.mask.drawRect(viewportX, viewportY, layer.mask.baseWidth, layer.mask.baseHeight);
 			}
         })
     }
