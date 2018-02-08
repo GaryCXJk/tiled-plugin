@@ -508,13 +508,19 @@ export class TiledTilemap extends ShaderTilemap {
 
     _createImageLayer(layerData, id) {
         let zIndex = 0;
-        let repeatX = true;
-        let repeatY = true;
-        let deltaX = 0;
-        let deltaY = 0;
+        let repeatX = false;
+        let repeatY = false;
+        let deltaX = 1;
+        let deltaY = 1;
         let autoX = 0;
         let autoY = 0;
         let hue = 0;
+		let viewportX = 0;
+		let viewportY = 0;
+		let viewportWidth = 0;
+		let viewportHeight = 0;
+		let viewportDeltaX = 0;
+		let viewportDeltaY = 0;
 
         if(!!layerData.properties) {
             if(!!layerData.properties.ignoreLoading) {
@@ -529,10 +535,10 @@ export class TiledTilemap extends ShaderTilemap {
             if(layerData.properties.hasOwnProperty('repeatY')) {
                 repeatY = !!layerData.properties.repeatY;
             }
-            if(!!layerData.properties.deltaX) {
+            if(layerData.properties.hasOwnProperty('deltaX')) {
                 deltaX = layerData.properties.deltaX;
             }
-            if(!!layerData.properties.deltaY) {
+            if(layerData.properties.hasOwnProperty('deltaY')) {
                 deltaY = layerData.properties.deltaY;
             }
             if(!!layerData.properties.autoX) {
@@ -544,6 +550,12 @@ export class TiledTilemap extends ShaderTilemap {
             if(!!layerData.properties.hue) {
                 hue = parseInt(layerData.properties.hue)
             }
+			if(layerData.properties.hasOwnProperty('viewportX')) {
+				viewportX = layerData.properties.viewportX;
+			}
+			if(layerData.properties.hasOwnProperty('viewportY')) {
+				viewportX = layerData.properties.viewportY;
+			}
         }
 
         let layer;
@@ -576,6 +588,20 @@ export class TiledTilemap extends ShaderTilemap {
         layer.stepAutoY = autoY;
         layer.autoX = 0;
         layer.autoY = 0;
+		if(viewportWidth || viewportHeight) {
+			viewportWidth = viewportWidth || Graphics.width;
+			viewportHeight = viewportHeight || Graphics.height;
+			let layerMask = new PIXI.Graphics();
+			layerMask.baseX = viewportX;
+			layerMask.baseY = viewportY;
+			layerMask.clear();
+			layerMask.beginFill(0xffffff, 1);
+			layerMask.drawRect(0, 0, viewportWidth, viewportHeight);
+			layerMask.deltaX = viewportDeltaX;
+			layerMask.deltaY = viewportDeltaY;
+			layer.mask = layerMask;
+			layer.hasViewport = true;
+		}
         this._parallaxlayers.push(layer);
         this.addChild(layer);
     }
@@ -618,6 +644,10 @@ export class TiledTilemap extends ShaderTilemap {
                 layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
                 layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
             }
+			if(layer.hasViewport) {
+				layer.mask.x = layer.mask.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
+				layer.mask.y = layer.mask.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+			}
         })
     }
 }

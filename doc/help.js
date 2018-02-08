@@ -85,6 +85,9 @@
  * Like stated before, with this plugin you can use practically unlimited
  * layers. By default, a layer has no z-index, which means it'll always be at
  * the bottom, or stacked on top of other layers and objects with no z-index.
+ * You can also specify a custom z-index by adding a property zIndex. If the
+ * z-index is lower than that of the player, it will render below the player,
+ * if the z-index is higher than the player, though, it will render above.
  * 
  * --------------------------------------------------------------------------------
  * - Tilesets                                                                     -
@@ -134,6 +137,23 @@
  * To place a vehicle in your map, use the object property vehicle, and set as
  * the value the name of the vehicle you want to add. You can use "boat", "ship"
  * or "airship", or any custom made vehicle you have made through plugins.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Images                                                                       -
+ * --------------------------------------------------------------------------------
+ * 
+ * Images can now directly be added to Tiled, both as parallax images as well as
+ * regular images. By default, images added through Tiled will act like regular
+ * images, and will be placed in the layer order you've set in the Tiled map.
+ * However, you can add several properties to make images a bit more dynamic. For
+ * example, you can use the same hide functions as for regular layers.
+ * 
+ * The main feature for images that most would want to use though is parallax
+ * images. To set an image as a parallax, you can set the repeatX and repeatY to
+ * true, so that the image will tile. You can also set a custom scroll speed when
+ * the camera is moving by changing the deltaX and deltaY. A delta of 0 means that
+ * the image stays stationary on that axis, while a delta of 1 makes the image
+ * scroll with the same speed as the player.
  * 
  * --------------------------------------------------------------------------------
  * - Extra notes on parallax images                                               -
