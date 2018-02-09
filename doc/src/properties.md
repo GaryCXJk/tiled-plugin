@@ -185,6 +185,24 @@ the horizontal direction.
 Setting this will automatically move the image, depending on the value, in
 the vertical direction.
 
+**viewportX**  
+The x-coordinate of the viewport.
+
+**viewportY**  
+The y-coordinate of the viewport.
+
+**viewportWidth**  
+The width of the viewport.
+
+**viewportHeight**  
+The height of the viewport.
+
+**viewportDeltaX**  
+The horizontal movement of the viewport when the camera moves.
+
+**viewportDeltaY**  
+The vertical movement of the viewport when the camera moves.
+
 **hue**  
 The hue of the image.
 

@@ -1,3 +1,9 @@
+let _initMembers = Game_Player.prototype.initMembers;
+Game_Player.prototype.initMembers = function() {
+    _initMembers.call(this);
+    this._newWaypoint = '';
+}
+
 let _checkEventTriggerHere = Game_Player.prototype.checkEventTriggerHere;
 Game_Player.prototype.checkEventTriggerHere = function (triggers) {
     _checkEventTriggerHere.call(this, triggers);
@@ -5,7 +11,12 @@ Game_Player.prototype.checkEventTriggerHere = function (triggers) {
 };
 
 Game_Player.prototype._checkMapLevelChangingHere = function () {
+    let oldLevel = $gameMap.currentMapLevel;
     $gameMap.checkMapLevelChanging(this.x, this.y);
+    TiledManager.triggerListener(this, 'levelchanged', {
+        oldLevel,
+        newLevel: $gameMap.currentMapLevel
+    })
 };
 
 Game_Player.prototype.isOnHealFloor = function() {
@@ -64,3 +75,44 @@ Game_Player.prototype.isInVehicle = function() {
     }
     return $gameMap.vehicles(true).indexOf(this._vehicleType) > -1;
 };
+
+let _reserveTransfer = Game_Player.prototype.reserveTransfer
+Game_Player.prototype.reserveTransfer = function(mapId, x, y, d, fadeType, waypoint = '') {
+    _reserveTransfer.call(this, mapId, x, y, d, fadeType);
+    this._newWaypoint = waypoint;
+}
+
+Game_Player.prototype.performTransfer = function() {
+    if (this.isTransferring()) {
+        this.setDirection(this._newDirection);
+        if (this._newMapId !== $gameMap.mapId() || this._needsMapReload) {
+            $gameMap.setup(this._newMapId);
+            this._needsMapReload = false;
+        }
+        let newX = this._newX;
+        let newY = this._newY;
+        if($gameMap.isTiledMap()) {
+            if(this._newWaypoint) {
+                let waypoint = $gameMap.waypoint(this._newWaypoint);
+                if(waypoint) {
+                    newX = waypoint.x;
+                    newY = waypoint.y;
+                }
+            }
+            let offsets = $gameMap.offsets();
+            if(offsets && offsets.x && offsets.y) {
+                newX-= offsets.x;
+                newY-= offsets.y;
+            }
+        }
+        this.locate(newX, newY);
+        this.refresh();
+        this.clearTransferInfo();
+    }
+};
+
+let _clearTransferInfo = Game_Player.prototype.clearTransferInfo;
+Game_Player.prototype.clearTransferInfo = function() {
+    _clearTransferInfo.call(this);
+    this._newWaypoint = '';
+}

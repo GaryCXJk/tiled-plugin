@@ -11,6 +11,7 @@ import "./Game_CharacterBase";
 import "./Game_Actor";
 import "./Game_Player";
 import "./Game_Vehicle";
+import "./Game_Interpreter";
 import "./Sprite_Character";
 import "./Spriteset_Map";
 
@@ -103,9 +104,58 @@ TiledManager.addFlag('ladder', 'bush', 'counter', 'damage')
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp')
 TiledManager.addFlag('heal')
 
+/* INITIALIZES VEHICLES */
+
 TiledManager.createVehicle('boat', true)
 TiledManager.createVehicle('ship', true)
 TiledManager.createVehicle('airship', true)
+
+/* INITIALIZES PLUGIN COMMANDS */
+
+TiledManager.addPluginCommand('TiledTransferPlayer', function(args) {
+    let mapId = parseInt(args[0]);
+    let waypoint = args[1];
+    let direction = args.length > 2 ? args[2] : 0;
+    let fadeType = args.length > 3 ? args[3] : 2;
+    if(isNaN(direction)) {
+        switch(direction.toLowerCase()) {
+            case 'down':
+                direction = 2;
+                break;
+            case 'left':
+                direction = 4;
+                break;
+            case 'right':
+                direction = 6;
+                break;
+            case 'up':
+                direction = 8;
+                break;
+            default:
+                direction = 0;
+                break;
+        }
+    } else {
+        direction = parseInt(direction);
+    }
+    if(isNaN(fadeType)) {
+        switch(direction.toLowerCase()) {
+            case 'black':
+                fadeType = 0;
+                break;
+            case 'white':
+                fadeType = 1;
+                break;
+            default:
+                fadeType = 2;
+                break;
+        }
+    } else {
+        fadeType = parseInt(fadeType);
+    }
+    $gamePlayer.reserveTransfer(mapId, 0, 0, direction, fadeType, waypoint);
+    this.setWaitMode('transfer');
+})
 
 /* LOAD CUSTOM DATA FROM THE PARAMTERS */
 

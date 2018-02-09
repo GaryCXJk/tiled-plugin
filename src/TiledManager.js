@@ -24,6 +24,8 @@ let _tileFlagIndex = 1;
 let _vehicles = {};
 let _vehiclesByIndex = [];
 
+let _pluginCommands = {};
+
 let _fullVehicleData = {
     bgm: {
         name: '',
@@ -200,4 +202,14 @@ TiledManager.getParameterVehicles = function() {
             TiledManager.createVehicle(vehicleData.vehicleName, vehicleData);
         })
     }
+}
+
+/* PLUGIN COMMANDS */
+
+TiledManager.addPluginCommand = function(command, func) {
+    _pluginCommands[command] = func;
+}
+
+TiledManager.pluginCommand = function(command, args) {
+    _pluginCommands[command].call(this, args);
 }

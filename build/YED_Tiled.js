@@ -485,6 +485,24 @@
  * Setting this will automatically move the image, depending on the value, in
  * the vertical direction.
  * 
+ *   viewportX
+ * The x-coordinate of the viewport.
+ * 
+ *   viewportY
+ * The y-coordinate of the viewport.
+ * 
+ *   viewportWidth
+ * The width of the viewport.
+ * 
+ *   viewportHeight
+ * The height of the viewport.
+ * 
+ *   viewportDeltaX
+ * The horizontal movement of the viewport when the camera moves.
+ * 
+ *   viewportDeltaY
+ * The vertical movement of the viewport when the camera moves.
+ * 
  *   hue
  * The hue of the image.
  * 
@@ -703,6 +721,20 @@
  * 
  *     direction  
  * The direction the character is looking in.
+ * 
+ * Game_Player
+ * ============
+ * 
+ *   changelevel
+ * Triggers when changing layer levels.
+ * 
+ * oldLevel
+ * --------
+ * The old level.
+ * 
+ * newLevel
+ * --------
+ * The new level.
  * 
  * Game_Map
  * =========
@@ -1916,6 +1948,8 @@ __webpack_require__(16);
 
 __webpack_require__(17);
 
+__webpack_require__(18);
+
 /* INITIALIZES LISTENERS */
 
 // Add floor damage while on a slippery floor
@@ -2007,9 +2041,58 @@ TiledManager.addFlag('ladder', 'bush', 'counter', 'damage');
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp');
 TiledManager.addFlag('heal');
 
+/* INITIALIZES VEHICLES */
+
 TiledManager.createVehicle('boat', true);
 TiledManager.createVehicle('ship', true);
 TiledManager.createVehicle('airship', true);
+
+/* INITIALIZES PLUGIN COMMANDS */
+
+TiledManager.addPluginCommand('TiledTransferPlayer', function (args) {
+    var mapId = parseInt(args[0]);
+    var waypoint = args[1];
+    var direction = args.length > 2 ? args[2] : 0;
+    var fadeType = args.length > 3 ? args[3] : 2;
+    if (isNaN(direction)) {
+        switch (direction.toLowerCase()) {
+            case 'down':
+                direction = 2;
+                break;
+            case 'left':
+                direction = 4;
+                break;
+            case 'right':
+                direction = 6;
+                break;
+            case 'up':
+                direction = 8;
+                break;
+            default:
+                direction = 0;
+                break;
+        }
+    } else {
+        direction = parseInt(direction);
+    }
+    if (isNaN(fadeType)) {
+        switch (direction.toLowerCase()) {
+            case 'black':
+                fadeType = 0;
+                break;
+            case 'white':
+                fadeType = 1;
+                break;
+            default:
+                fadeType = 2;
+                break;
+        }
+    } else {
+        fadeType = parseInt(fadeType);
+    }
+    $gamePlayer.reserveTransfer(mapId, 0, 0, direction, fadeType, waypoint);
+    this.setWaitMode('transfer');
+});
 
 /* LOAD CUSTOM DATA FROM THE PARAMTERS */
 
@@ -2237,6 +2320,8 @@ var _tileFlagIndex = 1;
 var _vehicles = {};
 var _vehiclesByIndex = [];
 
+var _pluginCommands = {};
+
 var _fullVehicleData = {
     bgm: {
         name: '',
@@ -2431,6 +2516,16 @@ TiledManager.getParameterVehicles = function () {
             TiledManager.createVehicle(vehicleData.vehicleName, vehicleData);
         });
     }
+};
+
+/* PLUGIN COMMANDS */
+
+TiledManager.addPluginCommand = function (command, func) {
+    _pluginCommands[command] = func;
+};
+
+TiledManager.pluginCommand = function (command, args) {
+    _pluginCommands[command].call(this, args);
 };
 
 /***/ }),
@@ -2732,7 +2827,7 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
 
 var _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
-    _setup.call(this, mapId);
+    this._tiledInitialized = false;
     this._collisionMap = {};
     this._arrowCollisionMap = {};
     this._regions = {};
@@ -2747,6 +2842,8 @@ Game_Map.prototype.setup = function (mapId) {
     this._tileFlagsLayers = [];
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
+    this._waypoints = {};
+    _setup.call(this, mapId);
     if (this.isTiledMap()) {
         $dataMap.width = this.tiledData.width;
         $dataMap.height = this.tiledData.height;
@@ -2776,6 +2873,7 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
+    this._initializeMapProperties();
     this._convertChunks();
     this._initializeMapLevel(0);
 
@@ -2786,8 +2884,41 @@ Game_Map.prototype._setupTiled = function () {
     this._setupTiledEvents();
 };
 
+Game_Map.prototype._initializeMapProperties = function () {
+    var autoSize = false;
+    var border = 0;
+    this._offsets = {
+        x: 0,
+        y: 0
+    };
+    if (this.tiledData.properties) {
+        if (this.tiledData.properties.hasOwnProperty('autoSize')) {
+            autoSize = this.tiledData.properties.autoSize;
+        }
+        if (this.tiledData.properties.hasOwnProperty('border')) {
+            border = this.tiledData.properties.border;
+        }
+    }
+    this._autoSize = autoSize;
+    this._autoSizeBorder = border;
+};
+
+Game_Map.prototype.offsets = function () {
+    return {
+        x: this._offsets.x,
+        y: this._offsets.y
+    };
+};
+
 Game_Map.prototype._convertChunks = function () {
     var _this = this;
+
+    if (!this.tiledData.infinite) {
+        return;
+    }
+    if (this._autoSize && this._autoSize !== 'false') {
+        this._setMapCropping();
+    }
 
     var _loop = function _loop(idx) {
         var layerData = _this.tiledData.layers[idx];
@@ -2796,9 +2927,9 @@ Game_Map.prototype._convertChunks = function () {
             layerData.data.fill(0);
             layerData.chunks.forEach(function (chunk) {
                 for (var i = 0; i < chunk.data.length; i++) {
-                    var x = chunk.x + i % chunk.width;
-                    var y = chunk.y + Math.floor(i / chunk.width);
-                    if (x >= layerData.x + _this.width() || y >= layerData.x + _this.width()) {
+                    var x = chunk.x - _this._offsets.x + i % chunk.width;
+                    var y = chunk.y - _this._offsets.y + Math.floor(i / chunk.width);
+                    if (x < 0 || y < 0 || x >= layerData.x + _this.width() || y >= layerData.x + _this.width()) {
                         continue;
                     }
                     var realX = x + y * _this.width();
@@ -2811,6 +2942,31 @@ Game_Map.prototype._convertChunks = function () {
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
         _loop(idx);
     }
+};
+
+Game_Map.prototype._setMapCropping = function () {
+    var minX = false;
+    var minY = false;
+    var maxX = false;
+    var maxY = false;
+    for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
+        var layer = this.tiledData.layers[idx];
+        if (layer.type !== 'tilelayer') {
+            continue;
+        }
+        var x1 = layer.startx;
+        var y1 = layer.starty;
+        var x2 = x1 + layer.width;
+        var y2 = y1 + layer.width;
+        minX = minX !== false ? Math.min(minX, x1) : x1;
+        minY = minY !== false ? Math.min(minY, y1) : y1;
+        maxX = maxX !== false ? Math.max(maxX, x2) : x2;
+        maxY = maxY !== false ? Math.max(maxY, y2) : y2;
+    }
+    this._offsets.x = minX;
+    this._offsets.y = minY;
+    $dataMap.width = maxX - minX;
+    $dataMap.height = maxY - minY;
 };
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -3509,6 +3665,17 @@ Game_Map.prototype._setupTiledEvents = function () {
                         continue;
                     }
 
+                    if (object.properties.waypoint) {
+                        var _x4 = object.x / this.tileWidth();
+                        var _y = object.y / this.tileHeight();
+                        if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                            _x4 = Math.floor(_x4);
+                            _y = Math.floor(_y);
+                        }
+                        this._waypoints[object.properties.waypoint] = { x: _x4, y: _y };
+                        continue;
+                    }
+
                     if (!object.properties.eventId && !object.properties.vehicle) {
                         continue;
                     }
@@ -4197,6 +4364,13 @@ Game_Map.prototype.updateVehicles = function () {
     TiledManager.updateVehicles(this._vehicles);
 };
 
+Game_Map.prototype.waypoint = function (waypoint) {
+    if (this._waypoints[waypoint]) {
+        return this._waypoints[waypoint];
+    }
+    return null;
+};
+
 /***/ }),
 /* 11 */
 /***/ (function(module, exports, __webpack_require__) {
@@ -4381,6 +4555,12 @@ Game_Actor.prototype.performMapHeal = function () {
 "use strict";
 
 
+var _initMembers = Game_Player.prototype.initMembers;
+Game_Player.prototype.initMembers = function () {
+    _initMembers.call(this);
+    this._newWaypoint = '';
+};
+
 var _checkEventTriggerHere = Game_Player.prototype.checkEventTriggerHere;
 Game_Player.prototype.checkEventTriggerHere = function (triggers) {
     _checkEventTriggerHere.call(this, triggers);
@@ -4388,7 +4568,12 @@ Game_Player.prototype.checkEventTriggerHere = function (triggers) {
 };
 
 Game_Player.prototype._checkMapLevelChangingHere = function () {
+    var oldLevel = $gameMap.currentMapLevel;
     $gameMap.checkMapLevelChanging(this.x, this.y);
+    TiledManager.triggerListener(this, 'levelchanged', {
+        oldLevel: oldLevel,
+        newLevel: $gameMap.currentMapLevel
+    });
 };
 
 Game_Player.prototype.isOnHealFloor = function () {
@@ -4448,6 +4633,49 @@ Game_Player.prototype.isInVehicle = function () {
         return _isInVehicle.call(this);
     }
     return $gameMap.vehicles(true).indexOf(this._vehicleType) > -1;
+};
+
+var _reserveTransfer = Game_Player.prototype.reserveTransfer;
+Game_Player.prototype.reserveTransfer = function (mapId, x, y, d, fadeType) {
+    var waypoint = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : '';
+
+    _reserveTransfer.call(this, mapId, x, y, d, fadeType);
+    this._newWaypoint = waypoint;
+};
+
+Game_Player.prototype.performTransfer = function () {
+    if (this.isTransferring()) {
+        this.setDirection(this._newDirection);
+        if (this._newMapId !== $gameMap.mapId() || this._needsMapReload) {
+            $gameMap.setup(this._newMapId);
+            this._needsMapReload = false;
+        }
+        var newX = this._newX;
+        var newY = this._newY;
+        if ($gameMap.isTiledMap()) {
+            if (this._newWaypoint) {
+                var waypoint = $gameMap.waypoint(this._newWaypoint);
+                if (waypoint) {
+                    newX = waypoint.x;
+                    newY = waypoint.y;
+                }
+            }
+            var offsets = $gameMap.offsets();
+            if (offsets && offsets.x && offsets.y) {
+                newX -= offsets.x;
+                newY -= offsets.y;
+            }
+        }
+        this.locate(newX, newY);
+        this.refresh();
+        this.clearTransferInfo();
+    }
+};
+
+var _clearTransferInfo = Game_Player.prototype.clearTransferInfo;
+Game_Player.prototype.clearTransferInfo = function () {
+    _clearTransferInfo.call(this);
+    this._newWaypoint = '';
 };
 
 /***/ }),
@@ -4548,6 +4776,18 @@ Game_Vehicle.prototype.getOff = function () {
 "use strict";
 
 
+var _pluginCommmand = Game_Interpreter.prototype.pluginCommand;
+Game_Interpreter.prototype.pluginCommand = function (command, args) {
+    TiledManager.pluginCommand.call(this, command, args);
+};
+
+/***/ }),
+/* 17 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var _update = Sprite_Character.prototype.update;
 Sprite_Character.prototype.update = function () {
 	_update.call(this);
@@ -4555,7 +4795,7 @@ Sprite_Character.prototype.update = function () {
 };
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

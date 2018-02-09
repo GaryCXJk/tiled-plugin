@@ -167,6 +167,17 @@ Triggers when stepping on a slippery floor tile.
     direction  
 The direction the character is looking in.
 
+### Game\_Player
+
+**changelevel**  
+Triggers when changing layer levels.
+
+    oldLevel
+The old level.
+
+    newLevel
+The new level.
+
 ### Game\_Map
 
 **changelevel**  

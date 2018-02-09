@@ -30,7 +30,7 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
 
 let _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
-    _setup.call(this, mapId);
+    this._tiledInitialized = false;
     this._collisionMap = {};
     this._arrowCollisionMap = {};
     this._regions = {};
@@ -45,6 +45,8 @@ Game_Map.prototype.setup = function (mapId) {
     this._tileFlagsLayers = [];
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
+    this._waypoints = {};
+    _setup.call(this, mapId);
     if (this.isTiledMap()) {
         $dataMap.width = this.tiledData.width;
         $dataMap.height = this.tiledData.height;
@@ -74,6 +76,7 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
+    this._initializeMapProperties();
     this._convertChunks();
     this._initializeMapLevel(0);
 
@@ -84,7 +87,39 @@ Game_Map.prototype._setupTiled = function () {
     this._setupTiledEvents();
 };
 
+Game_Map.prototype._initializeMapProperties = function() {
+    let autoSize = false;
+    let border = 0;
+    this._offsets = {
+        x: 0,
+        y: 0
+    }
+    if(this.tiledData.properties) {
+        if(this.tiledData.properties.hasOwnProperty('autoSize')) {
+            autoSize = this.tiledData.properties.autoSize;
+        }
+        if(this.tiledData.properties.hasOwnProperty('border')) {
+            border = this.tiledData.properties.border;
+        }
+    }
+    this._autoSize = autoSize;
+    this._autoSizeBorder = border;
+}
+
+Game_Map.prototype.offsets = function() {
+    return {
+        x: this._offsets.x,
+        y: this._offsets.y
+    }
+}
+
 Game_Map.prototype._convertChunks = function() {
+    if(!this.tiledData.infinite) {
+        return;
+    }
+    if(this._autoSize && this._autoSize !== 'false') {
+        this._setMapCropping();
+    }
     for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
         let layerData = this.tiledData.layers[idx];
         if(!layerData.data && !!layerData.chunks) {
@@ -92,9 +127,9 @@ Game_Map.prototype._convertChunks = function() {
             layerData.data.fill(0);
             layerData.chunks.forEach(chunk => {
                 for(let i = 0; i < chunk.data.length; i++) {
-                    let x = chunk.x + (i % chunk.width);
-                    let y = chunk.y + Math.floor(i / chunk.width);
-                    if(x >= layerData.x + this.width() || y >= layerData.x + this.width()) {
+                    let x = chunk.x - this._offsets.x + (i % chunk.width);
+                    let y = chunk.y - this._offsets.y + Math.floor(i / chunk.width);
+                    if(x < 0 || y < 0 || x >= layerData.x + this.width() || y >= layerData.x + this.width()) {
                         continue;
                     }
                     let realX = x + y * this.width();
@@ -103,6 +138,31 @@ Game_Map.prototype._convertChunks = function() {
             })
         }
     }
+}
+
+Game_Map.prototype._setMapCropping = function() {
+    var minX = false;
+    var minY = false;
+    var maxX = false;
+    var maxY = false;
+    for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
+        var layer = this.tiledData.layers[idx];
+        if(layer.type !== 'tilelayer') {
+            continue;
+        }
+        var x1 = layer.startx;
+        var y1 = layer.starty;
+        var x2 = x1 + layer.width;
+        var y2 = y1 + layer.width;
+        minX = minX!== false ? Math.min(minX, x1) : x1;
+        minY = minY!== false ? Math.min(minY, y1) : y1;
+        maxX = maxX!== false ? Math.max(maxX, x2) : x2;
+        maxY = maxY!== false ? Math.max(maxY, y2) : y2;
+    }
+    this._offsets.x = minX;
+    this._offsets.y = minY;
+    $dataMap.width = maxX - minX;
+    $dataMap.height = maxY - minY;
 }
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -618,6 +678,17 @@ Game_Map.prototype._setupTiledEvents = function () {
 
         for (let object of layerData.objects) {
             if (!object.properties) {
+                continue;
+            }
+
+            if(object.properties.waypoint) {
+                let x = object.x / this.tileWidth();
+                let y = object.y / this.tileHeight();
+                if(pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                    x = Math.floor(x);
+                    y = Math.floor(y);
+                }
+                this._waypoints[object.properties.waypoint] = {x, y}
                 continue;
             }
 
@@ -1194,3 +1265,10 @@ Game_Map.prototype.updateVehicles = function() {
     }
     TiledManager.updateVehicles(this._vehicles);
 };
+
+Game_Map.prototype.waypoint = function(waypoint) {
+    if(this._waypoints[waypoint]) {
+        return this._waypoints[waypoint];
+    }
+    return null;
+}
