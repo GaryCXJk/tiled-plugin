@@ -46,6 +46,25 @@ manually setting the size. Your map will remain an infinite map, but you'll
 now have a bit more flexibility with how the map is shaped in the final
 product.
 
+You could also enable auto-sizing or even auto-cropping, which will reduce
+the size of the map to that of the smallest area that's been covered by tiles.
+This feature will ignore images, as the size of these images can only
+determined after they've been loaded, and during the pre-processing phase,
+this hasn't happened yet. To enable this, add the property autoSize to the map
+properties. If set, the map will auto-size down to the smallest size of all
+chunks combined. Most of the time, a chunk is 16x16 tiles big, so you might
+end up with a lot of empty space.
+
+If you set autoSize to "deep" or "crop" (both have exactly the same effect),
+it will crop the map to the smallest size possible, by cutting away empty
+space.
+
+If you still need some space around your map, you can do so by adding a border.
+This border is set by adding a property to the map called border. By default,
+it adds a border all around the map of equal width, however, if you set the
+type to string, you can set four values, separated by spaces. The borders are
+defined in the order top, right, bottom and left.
+
 It's still recommended to convert infinite maps to fixed size maps, as the
 pre-processing phase will be skipped, allowing for faster map loading.
 
@@ -115,6 +134,12 @@ true, so that the image will tile. You can also set a custom scroll speed when
 the camera is moving by changing the deltaX and deltaY. A delta of 0 means that
 the image stays stationary on that axis, while a delta of 1 makes the image
 scroll with the same speed as the player.
+
+As an added feature, you can define a viewport. What it does is it allows you
+to add essentially a smaller window in which the image is rendered. Anything
+that falls outside this viewport will be cut off. You can set a viewport by
+using viewportX, viewportY, viewportWidth and viewportHeight, and you can also
+give the viewports their own delta with viewportDeltaX and viewportDeltaY.
 
 ## Extra notes on parallax images
 

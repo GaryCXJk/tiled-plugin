@@ -106,7 +106,7 @@
  * @desc Whether the position height should update on every move tick or just the final.
  * @default false
  * @type boolean
- * 
+ *
  * @param Custom Data
  * 
  * @param Custom Tile Flags

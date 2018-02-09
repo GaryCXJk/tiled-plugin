@@ -1415,7 +1415,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 my = my.mod(this._mapHeight);
             }
             var tilePosition = mx + my * this._mapWidth;
-            var tileId = this.tiledData.layers[layer.layerId].data[tilePosition];
+            var tileId = TiledManager.extractTileId(this.tiledData.layers[layer.layerId], tilePosition);
             var rectLayer = layer.children[0];
             var textureId = 0;
 
@@ -1863,34 +1863,37 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     }
                     layer.visible = visibility;
                 }
+                var offsets = $gameMap.offsets();
+                offsets.x *= $gameMap.tileWidth();
+                offsets.y *= $gameMap.tileHeight();
                 if (!!layer.origin) {
                     if (!layer.repeatX) {
-                        layer.origin.x = layer.baseX + layer.autoX;
-                        layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                        layer.origin.x = layer.baseX - offsets.x + layer.autoX;
+                        layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
                         layer.width = layer.bitmap.width;
                     } else {
-                        layer.origin.x = layer.baseX + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                        layer.x = layer.baseX;
+                        layer.origin.x = layer.baseX - offsets.x + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                        layer.x = layer.baseX - offsets.x;
                         layer.width = Graphics.width;
                     }
                     if (!layer.repeatY) {
-                        layer.origin.y = layer.baseY + layer.autoY;
-                        layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                        layer.origin.y = layer.baseY - offsets.y + layer.autoY;
+                        layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
                         layer.height = layer.bitmap.height;
                     } else {
-                        layer.origin.y = layer.baseY + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
-                        layer.y = layer.baseY;
+                        layer.origin.y = layer.baseY - offsets.y + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                        layer.y = layer.baseY - offsets.y;
                         layer.height = Graphics.height;
                     }
                     layer.autoX += layer.stepAutoX;
                     layer.autoY += layer.stepAutoY;
                 } else {
-                    layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                    layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
                 }
                 if (layer.hasViewport) {
-                    var viewportX = layer.mask.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
-                    var viewportY = layer.mask.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+                    var viewportX = layer.mask.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
+                    var viewportY = layer.mask.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
                     layer.mask.clear();
                     layer.mask.beginFill(0xffffff, 1);
                     layer.mask.drawRect(viewportX, viewportY, layer.mask.baseWidth, layer.mask.baseHeight);
@@ -2413,6 +2416,29 @@ TiledManager.hasHideProperties = function (layerData) {
     }).length > 0;
 };
 
+TiledManager.extractTileId = function (layerData, i) {
+    if (layerData.data) {
+        return layerData.data[i];
+    } else {
+        var x = i % $gameMap.width();
+        var y = Math.floor(i / $gameMap.width());
+        var offsets = $gameMap.offsets();
+        x += offsets.x;
+        y += offsets.y;
+        if (x < layerData.startx || y < layerData.starty || x >= layerData.startx + layerData.width || y >= layerData.starty + layerData.height) {
+            return 0;
+        }
+        for (var chunkIdx = 0; chunkIdx < layerData.chunks.length; chunkIdx++) {
+            var chunk = layerData.chunks[chunkIdx];
+            if (x < chunk.x || y < chunk.y || x >= chunk.x + chunk.width || y >= chunk.y + chunk.height) {
+                continue;
+            }
+            return chunk.data[x - chunk.x + (y - chunk.y) * chunk.width];
+        }
+        return 0;
+    }
+};
+
 TiledManager.addFlag = function () {
     for (var _len = arguments.length, flagIds = Array(_len), _key = 0; _key < _len; _key++) {
         flagIds[_key] = arguments[_key];
@@ -2795,6 +2821,10 @@ exports.default = TiledTileShader;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 // Constants
 var pluginParams = PluginManager.parameters("YED_Tiled");
 
@@ -2843,6 +2873,9 @@ Game_Map.prototype.setup = function (mapId) {
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
     this._waypoints = {};
+    this._autoSize = false;
+    this._autoSizeBorder = 0;
+    this._offsets = { x: 0, y: 0 };
     _setup.call(this, mapId);
     if (this.isTiledMap()) {
         $dataMap.width = this.tiledData.width;
@@ -2854,6 +2887,8 @@ Game_Map.prototype.setup = function (mapId) {
                 character.refreshBushDepth();
             });
         }
+    } else {
+        this._tiledInitialized = true;
     }
 };
 
@@ -2874,7 +2909,7 @@ Game_Map.prototype.isTiledMap = function () {
 
 Game_Map.prototype._setupTiled = function () {
     this._initializeMapProperties();
-    this._convertChunks();
+    this._initializeInfiniteMap();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -2887,10 +2922,6 @@ Game_Map.prototype._setupTiled = function () {
 Game_Map.prototype._initializeMapProperties = function () {
     var autoSize = false;
     var border = 0;
-    this._offsets = {
-        x: 0,
-        y: 0
-    };
     if (this.tiledData.properties) {
         if (this.tiledData.properties.hasOwnProperty('autoSize')) {
             autoSize = this.tiledData.properties.autoSize;
@@ -2904,47 +2935,67 @@ Game_Map.prototype._initializeMapProperties = function () {
 };
 
 Game_Map.prototype.offsets = function () {
+    var x = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+    if ((typeof x === 'undefined' ? 'undefined' : _typeof(x)) === 'object') {
+        var offsets = {
+            x: (x.x || 0) - this._offsets.x,
+            y: (x.y || 0) - this._offsets.y
+        };
+        if (typeof y === 'string' && offsets.hasOwnProperty(y)) {
+            return offsets[y];
+        }
+        return offsets;
+    }
+    if (x !== false || y !== false) {
+        return {
+            x: (x || 0) - this._offsets.x,
+            y: (y || 0) - this._offsets.y
+        };
+    }
     return {
         x: this._offsets.x,
         y: this._offsets.y
     };
 };
 
-Game_Map.prototype._convertChunks = function () {
-    var _this = this;
-
+Game_Map.prototype._initializeInfiniteMap = function () {
     if (!this.tiledData.infinite) {
         return;
     }
     if (this._autoSize && this._autoSize !== 'false') {
-        this._setMapCropping();
+        this._setMapSize();
     }
-
-    var _loop = function _loop(idx) {
-        var layerData = _this.tiledData.layers[idx];
-        if (!layerData.data && !!layerData.chunks) {
-            layerData.data = new Array(_this.width() * _this.height());
-            layerData.data.fill(0);
-            layerData.chunks.forEach(function (chunk) {
-                for (var i = 0; i < chunk.data.length; i++) {
-                    var x = chunk.x - _this._offsets.x + i % chunk.width;
-                    var y = chunk.y - _this._offsets.y + Math.floor(i / chunk.width);
-                    if (x < 0 || y < 0 || x >= layerData.x + _this.width() || y >= layerData.x + _this.width()) {
-                        continue;
-                    }
-                    var realX = x + y * _this.width();
-                    layerData.data[realX] = chunk.data[i];
-                }
-            });
-        }
-    };
-
-    for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        _loop(idx);
+    /*
+    This used to convert chunk data into regular map data. I removed it because I realized that really big maps
+    will pose a huge memory problem, especially if you have a lot of layers. It also won't affect the load time,
+    as all other data will already be pre-processed.
+    */
+    /*
+    for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
+    	let layerData = this.tiledData.layers[idx];
+    	if(!layerData.data && !!layerData.chunks) {
+    		layerData.data = new Array(this.width() * this.height());
+    		layerData.data.fill(0);
+    		layerData.chunks.forEach(chunk => {
+    			for(let i = 0; i < chunk.data.length; i++) {
+    				let x = chunk.x - this._offsets.x + (i % chunk.width);
+    				let y = chunk.y - this._offsets.y + Math.floor(i / chunk.width);
+    				if(x < 0 || y < 0 || x >= layerData.x + this.width() || y >= layerData.x + this.width()) {
+    					continue;
+    				}
+    				let realX = x + y * this.width();
+    				layerData.data[realX] = chunk.data[i];
+    			}
+    		})
+    	}
     }
+    */
 };
 
-Game_Map.prototype._setMapCropping = function () {
+Game_Map.prototype._setMapSize = function () {
+    // Initialize variables
     var minX = false;
     var minY = false;
     var maxX = false;
@@ -2957,16 +3008,88 @@ Game_Map.prototype._setMapCropping = function () {
         var x1 = layer.startx;
         var y1 = layer.starty;
         var x2 = x1 + layer.width;
-        var y2 = y1 + layer.width;
+        var y2 = y1 + layer.height;
+        if (this._autoSize === 'deep' || this._autoSize === 'crop') {
+            if (minX === false || x1 < minX) {
+                x1 = this._cropInfiniteMap(layer, x1, minX === false ? x2 : minX);
+            }
+            if (minY === false || y1 < minY) {
+                y1 = this._cropInfiniteMap(layer, y1, minY === false ? y2 : minY, true, true);
+            }
+            if (maxX === false || x2 > maxX) {
+                x2 = this._cropInfiniteMap(layer, x2, maxX === false ? x1 : maxX, false);
+            }
+            if (maxY === false || y2 > maxY) {
+                y2 = this._cropInfiniteMap(layer, y2, maxY === false ? y1 : maxY, false, true);
+            }
+        }
         minX = minX !== false ? Math.min(minX, x1) : x1;
         minY = minY !== false ? Math.min(minY, y1) : y1;
         maxX = maxX !== false ? Math.max(maxX, x2) : x2;
         maxY = maxY !== false ? Math.max(maxY, y2) : y2;
     }
+    if (this._autoSizeBorder) {
+        var border = [0, 0, 0, 0];
+        if (isNaN(this._autoSizeBorder)) {
+            var autoBorder = this.autoSizeBorder.split(' ');
+            border[0] = parseInt(autoBorder[0]);
+            border[1] = autoBorder.length < 2 ? border[0] : parseInt(autoBorder[1]);
+            border[2] = autoBorder.length < 3 ? border[0] : parseInt(autoBorder[2]);
+            border[3] = autoBorder.length < 4 ? border[1] : parseInt(autoBorder[3]);
+        } else {
+            border[0] = this._autoSizeBorder;
+            border[1] = this._autoSizeBorder;
+            border[2] = this._autoSizeBorder;
+            border[3] = this._autoSizeBorder;
+        }
+        minX -= +border[3];
+        minY -= +border[0];
+        maxX += +border[1];
+        maxY += +border[2];
+    }
     this._offsets.x = minX;
     this._offsets.y = minY;
-    $dataMap.width = maxX - minX;
-    $dataMap.height = maxY - minY;
+    this.tiledData.width = maxX - minX;
+    this.tiledData.height = maxY - minY;
+};
+
+Game_Map.prototype._cropInfiniteMap = function (layer, offset, limit) {
+    var forward = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+    var vertical = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
+
+    var o = offset;
+    var d = vertical ? 'y' : 'x';
+    var s = vertical ? 'height' : 'width';
+    while (forward && o < limit || !forward && o > limit) {
+        var realO = o - (!forward ? 1 : 0);
+        var lineEmpty = true;
+        for (var chunkIdx = 0; chunkIdx < layer.chunks.length; chunkIdx++) {
+            var chunk = layer.chunks[chunkIdx];
+            if (realO < chunk[d] || realO >= chunk[d] + chunk[s]) {
+                continue;
+            }
+            var empty = true;
+            for (var o2 = 0; o2 < chunk[s]; o2++) {
+                var _coords;
+
+                var coords = (_coords = {}, _defineProperty(_coords, d, realO - chunk[d]), _defineProperty(_coords, vertical ? 'x' : 'y', o2), _coords);
+                var i = coords.x + coords.y * chunk.width;
+                if (chunk.data[i]) {
+                    empty = false;
+                    break;
+                }
+            }
+            if (!empty) {
+                lineEmpty = false;
+                break;
+            }
+        }
+        if (!lineEmpty) {
+            break;
+        }
+        o += forward ? 1 : -1;
+    }
+    return o;
 };
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -3065,21 +3188,21 @@ Game_Map.prototype._setupCollisionFull = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var _layerData = this.tiledData.layers[idx];
-        if (!_layerData.properties || !_layerData.properties.collision) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.collision) {
             continue;
         }
 
-        if (_layerData.properties.collision !== "full" && _layerData.properties.collision !== "up-left" && _layerData.properties.collision !== "up-right" && _layerData.properties.collision !== "down-left" && _layerData.properties.collision !== "down-right" && _layerData.properties.collision !== "tiles") {
+        if (layerData.properties.collision !== "full" && layerData.properties.collision !== "up-left" && layerData.properties.collision !== "up-right" && layerData.properties.collision !== "down-left" && layerData.properties.collision !== "down-right" && layerData.properties.collision !== "tiles") {
             continue;
         }
 
-        var level = parseInt(_layerData.properties.level) || 0;
+        var level = parseInt(layerData.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(_layerData)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._collisionMapLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['collisionMap']);
@@ -3098,8 +3221,8 @@ Game_Map.prototype._setupCollisionFull = function () {
                 if (this.isHalfTile()) {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
-                if (!!_layerData.data[x]) {
-                    switch (_layerData.properties.collision) {
+                if (!!TiledManager.extractTileId(layerData, x)) {
+                    switch (layerData.properties.collision) {
                         case "full":
                             ids.push(realX);
                             if (this.isHalfTile()) {
@@ -3119,7 +3242,7 @@ Game_Map.prototype._setupCollisionFull = function () {
                             ids.push(realX + width + 1);
                             break;
                         case "tiles":
-                            var tileId = _layerData.data[x];
+                            var tileId = TiledManager.extractTileId(layerData, x);
                             var tileset = this._getTileset(tileId);
                             if (tileset && tileset.tileproperties) {
                                 var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -3202,44 +3325,44 @@ Game_Map.prototype._setupCollisionArrow = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var _layerData2 = this.tiledData.layers[idx];
-        if (!_layerData2.properties || !_layerData2.properties.collision) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.collision) {
             continue;
         }
 
-        if (_layerData2.properties.collision !== "arrow" && _layerData2.properties.collision !== "tiles") {
+        if (layerData.properties.collision !== "arrow" && layerData.properties.collision !== "tiles") {
             continue;
         }
 
-        if (!_layerData2.properties.arrowImpassable && _layerData2.properties.collision !== "tiles") {
+        if (!layerData.properties.arrowImpassable && layerData.properties.collision !== "tiles") {
             continue;
         }
 
-        if (_layerData2.properties.arrowImpassable) {
+        if (layerData.properties.arrowImpassable) {
 
-            if (_layerData2.properties.arrowImpassable === "down") {
+            if (layerData.properties.arrowImpassable === "down") {
                 bit = 1;
             }
 
-            if (_layerData2.properties.arrowImpassable === "left") {
+            if (layerData.properties.arrowImpassable === "left") {
                 bit = 2;
             }
 
-            if (_layerData2.properties.arrowImpassable === "right") {
+            if (layerData.properties.arrowImpassable === "right") {
                 bit = 4;
             }
 
-            if (_layerData2.properties.arrowImpassable === "up") {
+            if (layerData.properties.arrowImpassable === "up") {
                 bit = 8;
             }
         }
 
-        var level = parseInt(_layerData2.properties.level) || 0;
+        var level = parseInt(layerData.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(_layerData2)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._arrowCollisionMapLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['arrowCollisionMap']);
@@ -3259,11 +3382,11 @@ Game_Map.prototype._setupCollisionArrow = function () {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!_layerData2.data[x]) {
+                if (!!TiledManager.extractTileId(layerData, x)) {
                     var realBit = bit;
-                    if (_layerData2.properties.collision === "tiles") {
+                    if (layerData.properties.collision === "tiles") {
                         realBit = 0;
-                        var tileId = _layerData2.data[x];
+                        var tileId = TiledManager.extractTileId(layerData, x);
                         var tileset = this._getTileset(tileId);
                         if (tileset && tileset.tileproperties) {
                             var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -3320,17 +3443,17 @@ Game_Map.prototype._setupRegion = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var _layerData3 = this.tiledData.layers[idx];
-        if (!_layerData3.properties || !_layerData3.properties.regionId) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.regionId) {
             continue;
         }
 
-        var level = parseInt(_layerData3.properties.level) || 0;
+        var level = parseInt(layerData.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(_layerData3)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._regionsLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['regions']);
@@ -3351,12 +3474,12 @@ Game_Map.prototype._setupRegion = function () {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!_layerData3.data[x]) {
+                if (!!TiledManager.extractTileId(layerData, x)) {
                     var regionId = 0;
-                    if (_layerData3.properties.regionId > -1) {
-                        regionId = parseInt(_layerData3.properties.regionId);
+                    if (layerData.properties.regionId > -1) {
+                        regionId = parseInt(layerData.properties.regionId);
                     } else {
-                        var tileId = _layerData3.data[x];
+                        var tileId = TiledManager.extractTileId(layerData, x);
                         var tileset = this._getTileset(tileId);
                         if (tileset && tileset.tileproperties) {
                             var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -3364,8 +3487,8 @@ Game_Map.prototype._setupRegion = function () {
                                 regionId = parseInt(tileData.regionId);
                             }
                         }
-                        if (_layerData3.properties.regionOffset) {
-                            regionId += _layerData3.properties.regionOffset;
+                        if (layerData.properties.regionOffset) {
+                            regionId += layerData.properties.regionOffset;
                         }
                     }
                     regionMap[realX] = regionId;
@@ -3405,16 +3528,16 @@ Game_Map.prototype._setupMapLevelChange = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var _layerData4 = this.tiledData.layers[idx];
-        if (!_layerData4.properties || !_layerData4.properties.hasOwnProperty('toLevel')) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.hasOwnProperty('toLevel')) {
             continue;
         }
 
-        var level = parseInt(_layerData4.properties.level) || 0;
+        var level = parseInt(layerData.properties.level) || 0;
         this._initializeMapLevel(level);
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(_layerData4)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._mapLevelChangeLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['mapLevelChange']);
@@ -3431,12 +3554,12 @@ Game_Map.prototype._setupMapLevelChange = function () {
                 var x = _step6.value;
 
                 var realX = x;
-                var toLevel = parseInt(_layerData4.properties.toLevel);
+                var toLevel = parseInt(layerData.properties.toLevel);
                 if (this.isHalfTile()) {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!_layerData4.data[x]) {
+                if (!!TiledManager.extractTileId(layerData, x)) {
                     levelChangeMap[realX] = toLevel;
                     if (this.isHalfTile()) {
                         levelChangeMap[realX + 1] = toLevel;
@@ -3474,16 +3597,16 @@ Game_Map.prototype._setupPositionHeightChange = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var _layerData5 = this.tiledData.layers[idx];
-        if (!_layerData5.properties || !_layerData5.properties.hasOwnProperty('floorHeight')) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.hasOwnProperty('floorHeight')) {
             continue;
         }
 
-        var level = parseInt(_layerData5.properties.level) || 0;
+        var level = parseInt(layerData.properties.level) || 0;
         this._initializeMapLevel(level);
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(_layerData5)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._positionHeightChangeLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['positionHeightChange']);
@@ -3500,12 +3623,12 @@ Game_Map.prototype._setupPositionHeightChange = function () {
                 var x = _step7.value;
 
                 var realX = x;
-                var toLevel = parseInt(_layerData5.properties.floorHeight);
+                var toLevel = parseInt(layerData.properties.floorHeight);
                 if (this.isHalfTile()) {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!_layerData5.data[x]) {
+                if (!!TiledManager.extractTileId(layerData, x)) {
                     positionHeightChangeMap[realX] = toLevel;
                     if (this.isHalfTile()) {
                         positionHeightChangeMap[realX + 1] = toLevel;
@@ -3543,17 +3666,17 @@ Game_Map.prototype._setupTileFlags = function () {
     }
 
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
-        var _layerData6 = this.tiledData.layers[idx];
-        if (!_layerData6.properties || !_layerData6.properties.tileFlags) {
+        var layerData = this.tiledData.layers[idx];
+        if (!layerData.properties || !layerData.properties.tileFlags) {
             continue;
         }
 
-        var level = parseInt(_layerData6.properties.level) || 0;
+        var level = parseInt(layerData.properties.level) || 0;
         this._initializeMapLevel(level);
 
         var layerId = 'main';
 
-        if (TiledManager.hasHideProperties(_layerData6)) {
+        if (TiledManager.hasHideProperties(layerData)) {
             layerId = idx;
             this._tileFlagsLayers[level].push(idx);
             this._initializeMapLevelData(level, layerId, ['tileFlags']);
@@ -3574,9 +3697,9 @@ Game_Map.prototype._setupTileFlags = function () {
                     realX = Math.floor(x / halfWidth) * width * 2 + x % halfWidth * 2;
                 }
 
-                if (!!_layerData6.data[x]) {
+                if (!!TiledManager.extractTileId(layerData, x)) {
                     var tileFlags = 0;
-                    var tileId = _layerData6.data[x];
+                    var tileId = TiledManager.extractTileId(layerData, x);
                     var tileset = this._getTileset(tileId);
                     if (tileset && tileset.tileproperties) {
                         var tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -3647,9 +3770,9 @@ Game_Map.prototype._setupTiledEvents = function () {
 
     try {
         for (var _iterator9 = this.tiledData.layers[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
-            var _layerData7 = _step9.value;
+            var layerData = _step9.value;
 
-            if (_layerData7.type !== "objectgroup") {
+            if (layerData.type !== "objectgroup") {
                 continue;
             }
 
@@ -3658,7 +3781,7 @@ Game_Map.prototype._setupTiledEvents = function () {
             var _iteratorError10 = undefined;
 
             try {
-                for (var _iterator10 = _layerData7.objects[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+                for (var _iterator10 = layerData.objects[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
                     var object = _step10.value;
 
                     if (!object.properties) {
@@ -3666,13 +3789,13 @@ Game_Map.prototype._setupTiledEvents = function () {
                     }
 
                     if (object.properties.waypoint) {
-                        var _x4 = object.x / this.tileWidth();
+                        var _x8 = object.x / this.tileWidth();
                         var _y = object.y / this.tileHeight();
                         if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
-                            _x4 = Math.floor(_x4);
+                            _x8 = Math.floor(_x8);
                             _y = Math.floor(_y);
                         }
-                        this._waypoints[object.properties.waypoint] = { x: _x4, y: _y };
+                        this._waypoints[object.properties.waypoint] = { x: _x8, y: _y };
                         continue;
                     }
 
@@ -3692,8 +3815,8 @@ Game_Map.prototype._setupTiledEvents = function () {
                     if (!event) {
                         continue;
                     }
-                    var x = object.x / this.tileWidth();
-                    var y = object.y / this.tileHeight();
+                    var x = object.x / this.tileWidth() - this._offsets.x;
+                    var y = object.y / this.tileHeight() - this._offsets.y;
                     if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
                         x = Math.floor(x);
                         y = Math.floor(y);
@@ -3805,8 +3928,8 @@ Game_Map.prototype.regionId = function (x, y) {
     if (regionLayer && regionLayer.length > 0) {
         for (var idx = 0; idx < regionLayer.length; idx++) {
             var layerId = regionLayer[idx];
-            var _layerData8 = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(_layerData8, 'regions');
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'regions');
             if (!hideData) {
                 if (allIds) {
                     regionValues.push(regionMap[layerId][index]);
@@ -3845,8 +3968,8 @@ Game_Map.prototype.checkPassage = function (x, y, bit) {
     } else if (arrowLayer && arrowLayer.length > 0) {
         for (var idx = 0; idx < arrowLayer.length; idx++) {
             var layerId = arrowLayer[idx];
-            var _layerData9 = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(_layerData9, 'collisions');
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
             if (!hideData) {
                 arrowValue &= arrows[layerId][index];
             }
@@ -3899,8 +4022,8 @@ Game_Map.prototype.isPassable = function (x, y, d) {
     } else if (collisionLayer && collisionLayer.length > 0) {
         for (var idx = 0; idx < collisionLayer.length; idx++) {
             var layerId = collisionLayer[idx];
-            var _layerData10 = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(_layerData10, 'collisions');
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'collisions');
             if (!hideData) {
                 collisionValue |= collisionMap[layerId][index];
             }
@@ -3935,8 +4058,8 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     if (mapLevelChangeLayer.length > 0) {
         for (var idx = 0; idx < mapLevelChangeLayer.length; idx++) {
             var layerId = mapLevelChangeLayer[idx];
-            var _layerData11 = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(_layerData11, 'levelChanges');
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'levelChanges');
             if (!hideData) {
                 mapLevelChangeValue = mapLevelChange[layerId][index];
             }
@@ -3962,8 +4085,8 @@ Game_Map.prototype.checkPositionHeight = function (x, y) {
     if (positionHeightChangeLayer.length > 0) {
         for (var idx = 0; idx < positionHeightChangeLayer.length; idx++) {
             var layerId = positionHeightChangeLayer[idx];
-            var _layerData12 = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(_layerData12, 'positionHeightChanges');
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'positionHeightChanges');
             if (!hideData) {
                 positionHeightChangeValue = positionHeightChange[layerId][index];
             }
@@ -3989,8 +4112,8 @@ Game_Map.prototype.getTileFlags = function (x, y) {
     } else if (tileFlagsLayer && tileFlagsLayer.length > 0) {
         for (var idx = 0; idx < tileFlagsLayer.length; idx++) {
             var layerId = tileFlagsLayer[idx];
-            var _layerData13 = this.tiledData.layers[layerId];
-            var hideData = TiledManager.checkLayerHidden(_layerData13, 'tileFlags');
+            var layerData = this.tiledData.layers[layerId];
+            var hideData = TiledManager.checkLayerHidden(layerData, 'tileFlags');
             if (!hideData && tileFlags[layerId][index]) {
                 tileFlagsValue = this._combineFlags(tileFlagsValue, tileFlags[layerId][index]);
             }
@@ -4263,7 +4386,7 @@ Game_Map.prototype.getLayerProperties = function () {
 };
 
 Game_Map.prototype.getTileProperties = function (x, y) {
-    var _this2 = this;
+    var _this = this;
 
     var layer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : -1;
     var ignoreHidden = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
@@ -4271,8 +4394,8 @@ Game_Map.prototype.getTileProperties = function (x, y) {
     var index = x + this.width() * y;
 
     if (layer > -1) {
-        if (this.tiledData.layers[layer] && this.tiledData.layers[layer].data) {
-            var tileId = this.tiledData.layers[layer].data[x];
+        if (this.tiledData.layers[layer] && (this.tiledData.layers[layer].data || this.tiledData.layers[layer].chunks)) {
+            var tileId = TiledManager.extractTileId(this.tiledData.layers[layer], index);
             var tileset = this._getTileset(tileId);
             if (tileset && tileset.tileproperties) {
                 return Object.assign({}, tileset.tileproperties[tileId - tileset.firstgid]);
@@ -4282,9 +4405,9 @@ Game_Map.prototype.getTileProperties = function (x, y) {
     }
     var tileProperties = {};
     this.tiledData.layers.forEach(function (layerData, i) {
-        if (layerData && layerData.data && layerData.properties) {
+        if (layerData && (layerData.data || layerData.chunks) && layerData.properties) {
             if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
-                var props = _this2.getTileProperties(x, y, i);
+                var props = _this.getTileProperties(x, y, i);
                 if (Object.keys(props).length > 0) {
                     tileProperties[i] = props;
                 }

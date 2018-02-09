@@ -258,7 +258,7 @@ export class TiledTilemap extends ShaderTilemap {
             my = my.mod(this._mapHeight);
         }
         let tilePosition = mx + my * this._mapWidth;
-        let tileId = this.tiledData.layers[layer.layerId].data[tilePosition];
+        let tileId = TiledManager.extractTileId(this.tiledData.layers[layer.layerId], tilePosition);
         let rectLayer = layer.children[0];
         let textureId = 0;
 
@@ -630,34 +630,37 @@ export class TiledTilemap extends ShaderTilemap {
                 }
                 layer.visible = visibility;
             }
+			let offsets = $gameMap.offsets();
+			offsets.x*= $gameMap.tileWidth();
+			offsets.y*= $gameMap.tileHeight();
             if(!!layer.origin) {
                 if(!layer.repeatX) {
-                    layer.origin.x = layer.baseX + layer.autoX;
-                    layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.origin.x = layer.baseX - offsets.x + layer.autoX;
+                    layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
                     layer.width = layer.bitmap.width;
                 } else {
-                    layer.origin.x = layer.baseX + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                    layer.x = layer.baseX;
+                    layer.origin.x = layer.baseX - offsets.x + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.x = layer.baseX - offsets.x;
                     layer.width = Graphics.width;
                 }
                 if(!layer.repeatY) {
-                    layer.origin.y = layer.baseY + layer.autoY;
-                    layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.origin.y = layer.baseY - offsets.y + layer.autoY;
+                    layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
                     layer.height = layer.bitmap.height;
                 } else {
-                    layer.origin.y = layer.baseY + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
-                    layer.y = layer.baseY;
+                    layer.origin.y = layer.baseY - offsets.y + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.y = layer.baseY - offsets.y;
                     layer.height = Graphics.height;
                 }
                 layer.autoX+= layer.stepAutoX;
                 layer.autoY+= layer.stepAutoY;
             } else {
-                layer.x = layer.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                layer.y = layer.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
             }
 			if(layer.hasViewport) {
-				let viewportX = layer.mask.baseX - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
-				let viewportY = layer.mask.baseY - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+				let viewportX = layer.mask.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
+				let viewportY = layer.mask.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
 				layer.mask.clear();
 				layer.mask.beginFill(0xffffff, 1);
 				layer.mask.drawRect(viewportX, viewportY, layer.mask.baseWidth, layer.mask.baseHeight);

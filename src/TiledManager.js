@@ -111,6 +111,29 @@ TiledManager.hasHideProperties = function(layerData) {
     );
 }
 
+TiledManager.extractTileId = function(layerData, i) {
+	if(layerData.data) {
+		return layerData.data[i];
+	} else {
+		let x = i % $gameMap.width();
+		let y = Math.floor(i / $gameMap.width());
+		let offsets = $gameMap.offsets();
+		x+= offsets.x;
+		y+= offsets.y;
+		if(x < layerData.startx || y < layerData.starty || x >= layerData.startx + layerData.width || y >= layerData.starty + layerData.height) {
+			return 0;
+		}
+		for(let chunkIdx = 0; chunkIdx < layerData.chunks.length; chunkIdx++) {
+			let chunk = layerData.chunks[chunkIdx];
+			if(x < chunk.x || y < chunk.y || x >= chunk.x + chunk.width || y >= chunk.y + chunk.height) {
+				continue;
+			}
+			return chunk.data[x - chunk.x + (y - chunk.y) * chunk.width];
+		}
+		return 0;
+	}
+}
+
 TiledManager.addFlag = function(...flagIds) {
     flagIds.forEach(flagId => {
         _tileFlags[flagId] = _tileFlagIndex++;

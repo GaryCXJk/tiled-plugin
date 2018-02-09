@@ -46,6 +46,9 @@ Game_Map.prototype.setup = function (mapId) {
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
     this._waypoints = {};
+    this._autoSize = false;
+    this._autoSizeBorder = 0;
+    this._offsets = { x: 0, y: 0 };
     _setup.call(this, mapId);
     if (this.isTiledMap()) {
         $dataMap.width = this.tiledData.width;
@@ -57,7 +60,9 @@ Game_Map.prototype.setup = function (mapId) {
                 character.refreshBushDepth();
             })
         }
-    }
+    } else {
+		this._tiledInitialized = true;
+	}
 };
 
 Game_Map.prototype.isTiledInitialized = function() {
@@ -77,7 +82,7 @@ Game_Map.prototype.isTiledMap = function () {
 
 Game_Map.prototype._setupTiled = function () {
     this._initializeMapProperties();
-    this._convertChunks();
+    this._initializeInfiniteMap();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -90,10 +95,6 @@ Game_Map.prototype._setupTiled = function () {
 Game_Map.prototype._initializeMapProperties = function() {
     let autoSize = false;
     let border = 0;
-    this._offsets = {
-        x: 0,
-        y: 0
-    }
     if(this.tiledData.properties) {
         if(this.tiledData.properties.hasOwnProperty('autoSize')) {
             autoSize = this.tiledData.properties.autoSize;
@@ -106,41 +107,65 @@ Game_Map.prototype._initializeMapProperties = function() {
     this._autoSizeBorder = border;
 }
 
-Game_Map.prototype.offsets = function() {
+Game_Map.prototype.offsets = function(x = false, y = false) {
+	if(typeof x === 'object') {
+		let offsets = {
+			x: (x.x || 0) - this._offsets.x,
+			y: (x.y || 0) - this._offsets.y
+		}
+		if(typeof y === 'string' && offsets.hasOwnProperty(y)) {
+			return offsets[y];
+		}
+		return offsets;
+	}
+	if(x !== false || y !== false) {
+		return {
+			x: (x || 0) - this._offsets.x,
+			y: (y || 0) - this._offsets.y
+		}
+	}
     return {
         x: this._offsets.x,
         y: this._offsets.y
     }
 }
 
-Game_Map.prototype._convertChunks = function() {
+Game_Map.prototype._initializeInfiniteMap = function() {
     if(!this.tiledData.infinite) {
         return;
     }
     if(this._autoSize && this._autoSize !== 'false') {
-        this._setMapCropping();
+        this._setMapSize();
     }
-    for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
-        let layerData = this.tiledData.layers[idx];
-        if(!layerData.data && !!layerData.chunks) {
-            layerData.data = new Array(this.width() * this.height());
-            layerData.data.fill(0);
-            layerData.chunks.forEach(chunk => {
-                for(let i = 0; i < chunk.data.length; i++) {
-                    let x = chunk.x - this._offsets.x + (i % chunk.width);
-                    let y = chunk.y - this._offsets.y + Math.floor(i / chunk.width);
-                    if(x < 0 || y < 0 || x >= layerData.x + this.width() || y >= layerData.x + this.width()) {
-                        continue;
-                    }
-                    let realX = x + y * this.width();
-                    layerData.data[realX] = chunk.data[i];
-                }
-            })
-        }
-    }
+	/*
+	This used to convert chunk data into regular map data. I removed it because I realized that really big maps
+	will pose a huge memory problem, especially if you have a lot of layers. It also won't affect the load time,
+	as all other data will already be pre-processed.
+	*/
+	/*
+	for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
+		let layerData = this.tiledData.layers[idx];
+		if(!layerData.data && !!layerData.chunks) {
+			layerData.data = new Array(this.width() * this.height());
+			layerData.data.fill(0);
+			layerData.chunks.forEach(chunk => {
+				for(let i = 0; i < chunk.data.length; i++) {
+					let x = chunk.x - this._offsets.x + (i % chunk.width);
+					let y = chunk.y - this._offsets.y + Math.floor(i / chunk.width);
+					if(x < 0 || y < 0 || x >= layerData.x + this.width() || y >= layerData.x + this.width()) {
+						continue;
+					}
+					let realX = x + y * this.width();
+					layerData.data[realX] = chunk.data[i];
+				}
+			})
+		}
+	}
+	*/
 }
 
-Game_Map.prototype._setMapCropping = function() {
+Game_Map.prototype._setMapSize = function() {
+	// Initialize variables
     var minX = false;
     var minY = false;
     var maxX = false;
@@ -153,16 +178,86 @@ Game_Map.prototype._setMapCropping = function() {
         var x1 = layer.startx;
         var y1 = layer.starty;
         var x2 = x1 + layer.width;
-        var y2 = y1 + layer.width;
-        minX = minX!== false ? Math.min(minX, x1) : x1;
-        minY = minY!== false ? Math.min(minY, y1) : y1;
-        maxX = maxX!== false ? Math.max(maxX, x2) : x2;
-        maxY = maxY!== false ? Math.max(maxY, y2) : y2;
+        var y2 = y1 + layer.height;
+		if(this._autoSize === 'deep' || this._autoSize === 'crop') {
+			if(minX === false || x1 < minX) {
+				x1 = this._cropInfiniteMap(layer, x1, (minX === false ? x2 : minX));
+			}
+			if(minY === false || y1 < minY) {
+				y1 = this._cropInfiniteMap(layer, y1, (minY === false ? y2 : minY), true, true);
+			}
+			if(maxX === false || x2 > maxX) {
+				x2 = this._cropInfiniteMap(layer, x2, (maxX === false ? x1 : maxX), false);
+			}
+			if(maxY === false || y2 > maxY) {
+				y2 = this._cropInfiniteMap(layer, y2, (maxY === false ? y1 : maxY), false, true);
+			}
+		}
+        minX = minX !== false ? Math.min(minX, x1) : x1;
+        minY = minY !== false ? Math.min(minY, y1) : y1;
+        maxX = maxX !== false ? Math.max(maxX, x2) : x2;
+        maxY = maxY !== false ? Math.max(maxY, y2) : y2;
     }
+	if(this._autoSizeBorder) {
+		let border = [0, 0, 0, 0];
+		if(isNaN(this._autoSizeBorder)) {
+			let autoBorder = this.autoSizeBorder.split(' ');
+			border[0] = parseInt(autoBorder[0]);
+			border[1] = autoBorder.length < 2 ? border[0] : parseInt(autoBorder[1]);
+			border[2] = autoBorder.length < 3 ? border[0] : parseInt(autoBorder[2]);
+			border[3] = autoBorder.length < 4 ? border[1] : parseInt(autoBorder[3]);
+		} else {
+			border[0] = this._autoSizeBorder;
+			border[1] = this._autoSizeBorder;
+			border[2] = this._autoSizeBorder;
+			border[3] = this._autoSizeBorder;
+		}
+		minX-= +border[3];
+		minY-= +border[0];
+		maxX+= +border[1];
+		maxY+= +border[2];
+	}
     this._offsets.x = minX;
     this._offsets.y = minY;
-    $dataMap.width = maxX - minX;
-    $dataMap.height = maxY - minY;
+    this.tiledData.width = maxX - minX;
+    this.tiledData.height = maxY - minY;
+}
+
+Game_Map.prototype._cropInfiniteMap = function(layer, offset, limit, forward = true, vertical = false) {
+	let o = offset;
+	let d = vertical ? 'y' : 'x';
+	let s = vertical ? 'height' : 'width';
+	while((forward && o < limit) || (!forward && o > limit)) {
+		let realO = o - (!forward ? 1 : 0);
+		let lineEmpty = true;
+		for(let chunkIdx = 0; chunkIdx < layer.chunks.length; chunkIdx++) {
+			let chunk = layer.chunks[chunkIdx];
+			if(realO < chunk[d] || realO >= chunk[d] + chunk[s]) {
+				continue;
+			}
+			let empty = true;
+			for(let o2 = 0; o2 < chunk[s]; o2++) {
+				let coords = {
+					[d]: realO - chunk[d],
+					[vertical ? 'x' : 'y']: o2
+				};
+				let i = coords.x + coords.y * chunk.width;
+				if(chunk.data[i]) {
+					empty = false;
+					break;
+				}
+			}
+			if(!empty) {
+				lineEmpty = false;
+				break;
+			}
+		}
+		if(!lineEmpty) {
+			break;
+		}
+		o+= forward ? 1 : -1;
+	}
+	return o;
 }
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -267,7 +362,7 @@ Game_Map.prototype._setupCollisionFull = function () {
             if (this.isHalfTile()) {
                 realX = Math.floor(x / halfWidth) * width * 2 + (x % halfWidth) * 2;
             }
-            if (!!layerData.data[x]) {
+            if (!!TiledManager.extractTileId(layerData, x)) {
                 switch(layerData.properties.collision) {
                     case "full":
                         ids.push(realX);
@@ -288,7 +383,7 @@ Game_Map.prototype._setupCollisionFull = function () {
                         ids.push(realX + width + 1);
                         break;
                     case "tiles":
-                        let tileId = layerData.data[x];
+                        let tileId = TiledManager.extractTileId(layerData, x);
                         let tileset = this._getTileset(tileId);
                         if(tileset && tileset.tileproperties) {
                             let tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -388,11 +483,11 @@ Game_Map.prototype._setupCollisionArrow = function () {
                 realX = Math.floor(x / halfWidth) * width * 2 + (x % halfWidth) * 2;
             }
 
-            if (!!layerData.data[x]) {
+            if (!!TiledManager.extractTileId(layerData, x)) {
                 let realBit = bit;
                 if(layerData.properties.collision === "tiles") {
                     realBit = 0;
-                    let tileId = layerData.data[x];
+                    let tileId = TiledManager.extractTileId(layerData, x);
                     let tileset = this._getTileset(tileId);
                     if(tileset && tileset.tileproperties) {
                         let tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -462,12 +557,12 @@ Game_Map.prototype._setupRegion = function () {
                 realX = Math.floor(x / halfWidth) * width * 2 + (x % halfWidth) * 2;
             }
 
-            if (!!layerData.data[x]) {
+            if (!!TiledManager.extractTileId(layerData, x)) {
                 let regionId = 0;
                 if(layerData.properties.regionId > -1) {
                     regionId = parseInt(layerData.properties.regionId);
                 } else {
-                    let tileId = layerData.data[x];
+                    let tileId = TiledManager.extractTileId(layerData, x);
                     let tileset = this._getTileset(tileId);
                     if(tileset && tileset.tileproperties) {
                         let tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -526,7 +621,7 @@ Game_Map.prototype._setupMapLevelChange = function () {
                 realX = Math.floor(x / halfWidth) * width * 2 + (x % halfWidth) * 2;
             }
 
-            if (!!layerData.data[x]) {
+            if (!!TiledManager.extractTileId(layerData, x)) {
                 levelChangeMap[realX] = toLevel;
                 if (this.isHalfTile()) {
                     levelChangeMap[realX + 1] = toLevel;
@@ -574,7 +669,7 @@ Game_Map.prototype._setupPositionHeightChange = function () {
                 realX = Math.floor(x / halfWidth) * width * 2 + (x % halfWidth) * 2;
             }
 
-            if (!!layerData.data[x]) {
+            if (!!TiledManager.extractTileId(layerData, x)) {
                 positionHeightChangeMap[realX] = toLevel;
                 if (this.isHalfTile()) {
                     positionHeightChangeMap[realX + 1] = toLevel;
@@ -622,9 +717,9 @@ Game_Map.prototype._setupTileFlags = function() {
                 realX = Math.floor(x / halfWidth) * width * 2 + (x % halfWidth) * 2;
             }
 
-            if (!!layerData.data[x]) {
+            if (!!TiledManager.extractTileId(layerData, x)) {
                 let tileFlags = 0;
-                let tileId = layerData.data[x];
+                let tileId = TiledManager.extractTileId(layerData, x);
                 let tileset = this._getTileset(tileId);
                 if(tileset && tileset.tileproperties) {
                     let tileData = tileset.tileproperties[tileId - tileset.firstgid];
@@ -708,8 +803,8 @@ Game_Map.prototype._setupTiledEvents = function () {
             if (!event) {
                 continue;
             }
-            let x = object.x / this.tileWidth();
-            let y = object.y / this.tileHeight();
+            let x = object.x / this.tileWidth() - this._offsets.x;
+            let y = object.y / this.tileHeight() - this._offsets.y;
             if(pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
                 x = Math.floor(x);
                 y = Math.floor(y);
@@ -1174,8 +1269,8 @@ Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden =
     let index = x + this.width() * y;
     
 	if(layer > -1) {
-		if(this.tiledData.layers[layer] && this.tiledData.layers[layer].data) {
-			let tileId = this.tiledData.layers[layer].data[x];
+		if(this.tiledData.layers[layer] && (this.tiledData.layers[layer].data || this.tiledData.layers[layer].chunks)) {
+			let tileId = TiledManager.extractTileId(this.tiledData.layers[layer], index);
 			let tileset = this._getTileset(tileId);
 			if(tileset && tileset.tileproperties) {
 				return Object.assign({}, tileset.tileproperties[tileId - tileset.firstgid]);
@@ -1185,7 +1280,7 @@ Game_Map.prototype.getTileProperties = function(x, y, layer = -1, ignoreHidden =
 	}
 	let tileProperties = {};
 	this.tiledData.layers.forEach((layerData, i) => {
-		if(layerData && layerData.data && layerData.properties) {
+		if(layerData && (layerData.data || layerData.chunks) && layerData.properties) {
             if(!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
                 let props = this.getTileProperties(x, y, i);
                 if(Object.keys(props).length > 0) {
