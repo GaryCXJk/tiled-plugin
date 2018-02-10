@@ -632,35 +632,39 @@ export class TiledTilemap extends ShaderTilemap {
             }
 			let offsets = $gameMap.offsets();
 			offsets.x*= $gameMap.tileWidth();
-			offsets.y*= $gameMap.tileHeight();
+            offsets.y*= $gameMap.tileHeight();
+            let display = {
+                x: $gameMap.displayX() * $gameMap.tileWidth() - offsets.x,
+                y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
+            }
             if(!!layer.origin) {
                 if(!layer.repeatX) {
                     layer.origin.x = layer.baseX - offsets.x + layer.autoX;
-                    layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                    layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                     layer.width = layer.bitmap.width;
                 } else {
-                    layer.origin.x = layer.baseX - offsets.x + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                    layer.x = layer.baseX - offsets.x;
+                    layer.origin.x = layer.baseX - offsets.x + layer.autoX + display.x * layer.deltaX;
+                    layer.x = 0;
                     layer.width = Graphics.width;
                 }
                 if(!layer.repeatY) {
                     layer.origin.y = layer.baseY - offsets.y + layer.autoY;
-                    layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                     layer.height = layer.bitmap.height;
                 } else {
-                    layer.origin.y = layer.baseY - offsets.y + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
-                    layer.y = layer.baseY - offsets.y;
+                    layer.origin.y = layer.baseY - offsets.y + layer.autoY + display.y * layer.deltaY;
+                    layer.y = 0;
                     layer.height = Graphics.height;
                 }
                 layer.autoX+= layer.stepAutoX;
                 layer.autoY+= layer.stepAutoY;
             } else {
-                layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
+                layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
             }
 			if(layer.hasViewport) {
-				let viewportX = layer.mask.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
-				let viewportY = layer.mask.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+				let viewportX = layer.mask.baseX - offsets.x - display.x * layer.mask.deltaX;
+				let viewportY = layer.mask.baseY - offsets.y - display.y * layer.mask.deltaY;
 				layer.mask.clear();
 				layer.mask.beginFill(0xffffff, 1);
 				layer.mask.drawRect(viewportX, viewportY, layer.mask.baseWidth, layer.mask.baseHeight);

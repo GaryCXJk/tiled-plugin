@@ -234,5 +234,7 @@ TiledManager.addPluginCommand = function(command, func) {
 }
 
 TiledManager.pluginCommand = function(command, args) {
-    _pluginCommands[command].call(this, args);
+    if(_pluginCommands.hasOwnProperty(command)) {
+        _pluginCommands[command].call(this, args);
+    }
 }

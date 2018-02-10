@@ -106,7 +106,7 @@
  * @desc Whether the position height should update on every move tick or just the final.
  * @default false
  * @type boolean
- * 
+ *
  * @param Custom Data
  * 
  * @param Custom Tile Flags
@@ -197,6 +197,25 @@
  * now have a bit more flexibility with how the map is shaped in the final
  * product.
  * 
+ * You could also enable auto-sizing or even auto-cropping, which will reduce
+ * the size of the map to that of the smallest area that's been covered by tiles.
+ * This feature will ignore images, as the size of these images can only
+ * determined after they've been loaded, and during the pre-processing phase,
+ * this hasn't happened yet. To enable this, add the property autoSize to the map
+ * properties. If set, the map will auto-size down to the smallest size of all
+ * chunks combined. Most of the time, a chunk is 16x16 tiles big, so you might
+ * end up with a lot of empty space.
+ * 
+ * If you set autoSize to "deep" or "crop" (both have exactly the same effect),
+ * it will crop the map to the smallest size possible, by cutting away empty
+ * space.
+ * 
+ * If you still need some space around your map, you can do so by adding a border.
+ * This border is set by adding a property to the map called border. By default,
+ * it adds a border all around the map of equal width, however, if you set the
+ * type to string, you can set four values, separated by spaces. The borders are
+ * defined in the order top, right, bottom and left.
+ * 
  * It's still recommended to convert infinite maps to fixed size maps, as the
  * pre-processing phase will be skipped, allowing for faster map loading.
  * 
@@ -276,6 +295,12 @@
  * the camera is moving by changing the deltaX and deltaY. A delta of 0 means that
  * the image stays stationary on that axis, while a delta of 1 makes the image
  * scroll with the same speed as the player.
+ * 
+ * As an added feature, you can define a viewport. What it does is it allows you
+ * to add essentially a smaller window in which the image is rendered. Anything
+ * that falls outside this viewport will be cut off. You can set a viewport by
+ * using viewportX, viewportY, viewportWidth and viewportHeight, and you can also
+ * give the viewports their own delta with viewportDeltaX and viewportDeltaY.
  * 
  * --------------------------------------------------------------------------------
  * - Extra notes on parallax images                                               -
@@ -1866,34 +1891,38 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 var offsets = $gameMap.offsets();
                 offsets.x *= $gameMap.tileWidth();
                 offsets.y *= $gameMap.tileHeight();
+                var display = {
+                    x: $gameMap.displayX() * $gameMap.tileWidth() - offsets.x,
+                    y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
+                };
                 if (!!layer.origin) {
                     if (!layer.repeatX) {
                         layer.origin.x = layer.baseX - offsets.x + layer.autoX;
-                        layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
+                        layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                         layer.width = layer.bitmap.width;
                     } else {
-                        layer.origin.x = layer.baseX - offsets.x + layer.autoX + $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                        layer.x = layer.baseX - offsets.x;
+                        layer.origin.x = layer.baseX - offsets.x + layer.autoX + display.x * layer.deltaX;
+                        layer.x = 0;
                         layer.width = Graphics.width;
                     }
                     if (!layer.repeatY) {
                         layer.origin.y = layer.baseY - offsets.y + layer.autoY;
-                        layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                        layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                         layer.height = layer.bitmap.height;
                     } else {
-                        layer.origin.y = layer.baseY - offsets.y + layer.autoY + $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
-                        layer.y = layer.baseY - offsets.y;
+                        layer.origin.y = layer.baseY - offsets.y + layer.autoY + display.y * layer.deltaY;
+                        layer.y = 0;
                         layer.height = Graphics.height;
                     }
                     layer.autoX += layer.stepAutoX;
                     layer.autoY += layer.stepAutoY;
                 } else {
-                    layer.x = layer.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.deltaX;
-                    layer.y = layer.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.deltaY;
+                    layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
+                    layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                 }
                 if (layer.hasViewport) {
-                    var viewportX = layer.mask.baseX - offsets.x - $gameMap.displayX() * $gameMap.tileWidth() * layer.mask.deltaX;
-                    var viewportY = layer.mask.baseY - offsets.y - $gameMap.displayY() * $gameMap.tileHeight() * layer.mask.deltaY;
+                    var viewportX = layer.mask.baseX - offsets.x - display.x * layer.mask.deltaX;
+                    var viewportY = layer.mask.baseY - offsets.y - display.y * layer.mask.deltaY;
                     layer.mask.clear();
                     layer.mask.beginFill(0xffffff, 1);
                     layer.mask.drawRect(viewportX, viewportY, layer.mask.baseWidth, layer.mask.baseHeight);
@@ -2551,7 +2580,9 @@ TiledManager.addPluginCommand = function (command, func) {
 };
 
 TiledManager.pluginCommand = function (command, args) {
-    _pluginCommands[command].call(this, args);
+    if (_pluginCommands.hasOwnProperty(command)) {
+        _pluginCommands[command].call(this, args);
+    }
 };
 
 /***/ }),
@@ -4577,8 +4608,9 @@ Game_CharacterBase.prototype.isCollidedWithVehicles = function (x, y) {
                 return true;
             }
         }
+        return false;
     }
-    return false;
+    return true;
 };
 
 /***/ }),
@@ -4899,8 +4931,9 @@ Game_Vehicle.prototype.getOff = function () {
 "use strict";
 
 
-var _pluginCommmand = Game_Interpreter.prototype.pluginCommand;
+var _pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function (command, args) {
+    _pluginCommand.call(this, command, args);
     TiledManager.pluginCommand.call(this, command, args);
 };
 

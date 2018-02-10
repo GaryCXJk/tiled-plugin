@@ -63,6 +63,7 @@ Game_CharacterBase.prototype.isCollidedWithVehicles = function(x, y) {
                 return true;
             }
         }
+        return false;
     }
-    return false;
+    return true;
 };
