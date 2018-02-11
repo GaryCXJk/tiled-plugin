@@ -1095,6 +1095,10 @@ Game_Map.prototype.renderTileFlags = function (x, y, render = 'main', level = 0)
     return this.getTileFlags(x, y, render, level);
 }
 
+Game_Map.prototype.getTileFlagLayers = function(level) {
+    return this._tileFlagLayers[level].slice(0);
+}
+
 Game_Map.prototype.checkHasTileFlag = function (x, y, flag, render = false, level = false) {
     if(level === false) {
         level = 0;
