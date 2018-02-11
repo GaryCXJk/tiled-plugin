@@ -31,6 +31,7 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
 let _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
     this._tiledInitialized = false;
+    this._levels = [];
     this._collisionMap = {};
     this._arrowCollisionMap = {};
     this._regions = {};
@@ -49,6 +50,10 @@ Game_Map.prototype.setup = function (mapId) {
     this._autoSize = false;
     this._autoSizeBorder = 0;
     this._offsets = { x: 0, y: 0 };
+    this._camera = {
+        focus: "player",
+        data: null
+    }
     _setup.call(this, mapId);
     if (this.isTiledMap()) {
         $dataMap.width = this.tiledData.width;
@@ -164,6 +169,11 @@ Game_Map.prototype._initializeInfiniteMap = function() {
 	*/
 }
 
+/**
+ * Resizes an infinite map so that the entire map is visible.
+ * The only thing this does is set the offset and the size of the map,
+ * without changing the map data itself.
+ */
 Game_Map.prototype._setMapSize = function() {
 	// Initialize variables
     var minX = false;
@@ -264,6 +274,8 @@ Game_Map.prototype._initializeMapLevel = function (id) {
     if (!!this._collisionMap[id]) {
         return;
     }
+
+    this._levels.push(id);
 
     this._collisionMap[id] = {};
     this._arrowCollisionMap[id] = {};
@@ -876,7 +888,7 @@ Game_Map.prototype.regionId = function (x, y, allIds = false) {
         return _regionId.call(this, x, y);
     }
 
-    let index = x + this.width() * y;
+    let index = Math.floor(x) + this.width() * Math.floor(y);
     let regionMap = this._regions[this.currentMapLevel];
     let regionLayer = this._regionsLayers[this.currentMapLevel];
     
@@ -903,6 +915,14 @@ Game_Map.prototype.regionId = function (x, y, allIds = false) {
 
 Game_Map.prototype.regionIds = function (x, y) {
     return this.regionId(x, y, true);
+}
+
+Game_Map.prototype.getMapLevels = function() {
+    let levels = this._levels.slice(0);
+    levels.sort((a, b) => {
+        return a - b;
+    });
+    return levels;
 }
 
 let _checkPassage = Game_Map.prototype.checkPassage;

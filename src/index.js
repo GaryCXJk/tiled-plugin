@@ -50,7 +50,7 @@ TiledManager.addHideFunction('showOnLevel', function(layerData) {
 
 TiledManager.addHideFunction('hideOnRegion', function(layerData) {
     /* Hide if player is on certain region */
-    let regionId = $gameMap.regionId($gamePlayer.x, $gamePlayer.y);
+    let regionId = $gamePlayer.regionId();
     let hideLayer = false;
     if(parseInt(layerData.properties.hideOnRegion) === regionId) {
         hideLayer = true;
@@ -60,7 +60,7 @@ TiledManager.addHideFunction('hideOnRegion', function(layerData) {
 
 TiledManager.addHideFunction('hideOnRegions', function(layerData) {
     /* Hide if player is on certain region */
-    let regionId = $gameMap.regionId($gamePlayer.x, $gamePlayer.y);
+    let regionId = $gamePlayer.regionId();
     let hideLayer = false;
     if(layerData.properties.hideOnRegions.split(',').indexOf(String(regionId)) !== -1) {
         hideLayer = true;
@@ -70,7 +70,7 @@ TiledManager.addHideFunction('hideOnRegions', function(layerData) {
 
 TiledManager.addHideFunction('hideOnAnyRegions', function(layerData) {
     /* Hide if player is on certain region */
-    let regionIds = $gameMap.regionIds($gamePlayer.x, $gamePlayer.y);
+    let regionIds = $gamePlayer.regionIds();
     let hideLayer = false;
     let regions = layerData.properties.hideOnRegions.split(',');
     if(regions.filter(region => regionIds.indexOf(region) > -1).length > 0) {

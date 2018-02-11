@@ -18,7 +18,9 @@ Game_CharacterBase.prototype.distancePerFrame = function () {
 
 let _refreshBushDepth = Game_CharacterBase.prototype.refreshBushDepth;
 Game_CharacterBase.prototype.refreshBushDepth = function() {
-    this._bushDepth = 0;
+    if(!this.hasOwnProperty('_bushDepth')) {
+        this._bushDepth = 0;
+    }
     if(!$gameMap.isTiledMap() || $gameMap.isTiledInitialized()) {
         _refreshBushDepth.call(this);
     } else {
@@ -66,4 +68,23 @@ Game_CharacterBase.prototype.isCollidedWithVehicles = function(x, y) {
         return false;
     }
     return true;
+};
+
+Game_CharacterBase.prototype.updateScroll = function(lastScrolledX, lastScrolledY) {
+    var x1 = lastScrolledX;
+    var y1 = lastScrolledY;
+    var x2 = this.scrolledX();
+    var y2 = this.scrolledY();
+    if (y2 > y1 && y2 > this.centerY()) {
+        $gameMap.scrollDown(y2 - y1);
+    }
+    if (x2 < x1 && x2 < this.centerX()) {
+        $gameMap.scrollLeft(x1 - x2);
+    }
+    if (x2 > x1 && x2 > this.centerX()) {
+        $gameMap.scrollRight(x2 - x1);
+    }
+    if (y2 < y1 && y2 < this.centerY()) {
+        $gameMap.scrollUp(y1 - y2);
+    }
 };

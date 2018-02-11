@@ -658,6 +658,26 @@ export class TiledTilemap extends ShaderTilemap {
                 }
                 layer.autoX+= layer.stepAutoX;
                 layer.autoY+= layer.stepAutoY;
+                if(layer.bitmap.width > 0) {
+                    while(layer.autoX > layer.bitmap.width) {
+                        layer.autoX-= layer.bitmap.width;
+                    }
+                    while(layer.autoX < 0) {
+                        layer.autoX+= layer.bitmap.width;
+                    }
+                } else {
+                    layer.autoX = 0
+                }
+                if(layer.bitmap.height > 0) {
+                    while(layer.autoY > layer.bitmap.height) {
+                        layer.autoY-= layer.bitmap.height;
+                    }
+                    while(layer.autoY < 0) {
+                        layer.autoY+= layer.bitmap.height;
+                    }
+                } else {
+                    layer.autoY = 0
+                }
             } else {
                 layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                 layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;

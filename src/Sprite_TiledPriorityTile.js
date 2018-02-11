@@ -13,7 +13,7 @@ Sprite_TiledPriorityTile.prototype.constructor = Sprite_TiledPriorityTile;
 window.Sprite_TiledPriorityTile = Sprite_TiledPriorityTile;
 
 Sprite_TiledPriorityTile.prototype.updateVisibility = function() {
-    let visibility = true;
+    let visibility = false;
     if(this.layerId > -1) {
         let layer = $gameMap.tiledData.layers[this.layerId];
         if(layer.properties.transition) {

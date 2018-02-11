@@ -111,6 +111,24 @@ TiledManager.hasHideProperties = function(layerData) {
     );
 }
 
+TiledManager.expandLayerGroups = function(parentLayer = false) {
+    if(!parentLayer) {
+        parentLayer = $gameData.tiledData
+    }
+    if(!parentLayer) {
+        return;
+    }
+    for(var idx = 0; idx < parentLayer.layers.length; idx++) {
+        let layer = parentLayer.layers[idx];
+        if(layer.type !== 'group') {
+            continue;
+        }
+        TiledManager.expandLayerGroups(layer);
+        Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers))
+        idx+= layer.layers.length - 1;
+    }
+}
+
 TiledManager.extractTileId = function(layerData, i) {
 	if(layerData.data) {
 		return layerData.data[i];
@@ -133,6 +151,8 @@ TiledManager.extractTileId = function(layerData, i) {
 		return 0;
 	}
 }
+
+/* TILE FLAGS */
 
 TiledManager.addFlag = function(...flagIds) {
     flagIds.forEach(flagId => {

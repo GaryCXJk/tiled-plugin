@@ -1916,6 +1916,26 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     }
                     layer.autoX += layer.stepAutoX;
                     layer.autoY += layer.stepAutoY;
+                    if (layer.bitmap.width > 0) {
+                        while (layer.autoX > layer.bitmap.width) {
+                            layer.autoX -= layer.bitmap.width;
+                        }
+                        while (layer.autoX < 0) {
+                            layer.autoX += layer.bitmap.width;
+                        }
+                    } else {
+                        layer.autoX = 0;
+                    }
+                    if (layer.bitmap.height > 0) {
+                        while (layer.autoY > layer.bitmap.height) {
+                            layer.autoY -= layer.bitmap.height;
+                        }
+                        while (layer.autoY < 0) {
+                            layer.autoY += layer.bitmap.height;
+                        }
+                    } else {
+                        layer.autoY = 0;
+                    }
                 } else {
                     layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                     layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
@@ -2017,7 +2037,7 @@ TiledManager.addHideFunction('showOnLevel', function (layerData) {
 
 TiledManager.addHideFunction('hideOnRegion', function (layerData) {
     /* Hide if player is on certain region */
-    var regionId = $gameMap.regionId($gamePlayer.x, $gamePlayer.y);
+    var regionId = $gamePlayer.regionId();
     var hideLayer = false;
     if (parseInt(layerData.properties.hideOnRegion) === regionId) {
         hideLayer = true;
@@ -2027,7 +2047,7 @@ TiledManager.addHideFunction('hideOnRegion', function (layerData) {
 
 TiledManager.addHideFunction('hideOnRegions', function (layerData) {
     /* Hide if player is on certain region */
-    var regionId = $gameMap.regionId($gamePlayer.x, $gamePlayer.y);
+    var regionId = $gamePlayer.regionId();
     var hideLayer = false;
     if (layerData.properties.hideOnRegions.split(',').indexOf(String(regionId)) !== -1) {
         hideLayer = true;
@@ -2037,7 +2057,7 @@ TiledManager.addHideFunction('hideOnRegions', function (layerData) {
 
 TiledManager.addHideFunction('hideOnAnyRegions', function (layerData) {
     /* Hide if player is on certain region */
-    var regionIds = $gameMap.regionIds($gamePlayer.x, $gamePlayer.y);
+    var regionIds = $gamePlayer.regionIds();
     var hideLayer = false;
     var regions = layerData.properties.hideOnRegions.split(',');
     if (regions.filter(function (region) {
@@ -2225,6 +2245,7 @@ DataManager.loadTiledMapData = function (mapId) {
             (function () {
                 if (xhr.status === 200 || xhr.responseText !== "") {
                     DataManager._tempTiledData = JSON.parse(xhr.responseText);
+                    TiledManager.expandLayerGroups(DataManager._tempTiledData);
                 }
                 var tiledLoaded = true;
                 var tilesRequired = 0;
@@ -2445,6 +2466,26 @@ TiledManager.hasHideProperties = function (layerData) {
     }).length > 0;
 };
 
+TiledManager.expandLayerGroups = function () {
+    var parentLayer = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+
+    if (!parentLayer) {
+        parentLayer = $gameData.tiledData;
+    }
+    if (!parentLayer) {
+        return;
+    }
+    for (var idx = 0; idx < parentLayer.layers.length; idx++) {
+        var layer = parentLayer.layers[idx];
+        if (layer.type !== 'group') {
+            continue;
+        }
+        TiledManager.expandLayerGroups(layer);
+        Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers));
+        idx += layer.layers.length - 1;
+    }
+};
+
 TiledManager.extractTileId = function (layerData, i) {
     if (layerData.data) {
         return layerData.data[i];
@@ -2467,6 +2508,8 @@ TiledManager.extractTileId = function (layerData, i) {
         return 0;
     }
 };
+
+/* TILE FLAGS */
 
 TiledManager.addFlag = function () {
     for (var _len = arguments.length, flagIds = Array(_len), _key = 0; _key < _len; _key++) {
@@ -2607,7 +2650,7 @@ Sprite_TiledPriorityTile.prototype.constructor = Sprite_TiledPriorityTile;
 window.Sprite_TiledPriorityTile = Sprite_TiledPriorityTile;
 
 Sprite_TiledPriorityTile.prototype.updateVisibility = function () {
-    var visibility = true;
+    var visibility = false;
     if (this.layerId > -1) {
         var layer = $gameMap.tiledData.layers[this.layerId];
         if (layer.properties.transition) {
@@ -2889,6 +2932,7 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
 var _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
     this._tiledInitialized = false;
+    this._levels = [];
     this._collisionMap = {};
     this._arrowCollisionMap = {};
     this._regions = {};
@@ -2907,6 +2951,10 @@ Game_Map.prototype.setup = function (mapId) {
     this._autoSize = false;
     this._autoSizeBorder = 0;
     this._offsets = { x: 0, y: 0 };
+    this._camera = {
+        focus: "player",
+        data: null
+    };
     _setup.call(this, mapId);
     if (this.isTiledMap()) {
         $dataMap.width = this.tiledData.width;
@@ -3025,6 +3073,11 @@ Game_Map.prototype._initializeInfiniteMap = function () {
     */
 };
 
+/**
+ * Resizes an infinite map so that the entire map is visible.
+ * The only thing this does is set the offset and the size of the map,
+ * without changing the map data itself.
+ */
 Game_Map.prototype._setMapSize = function () {
     // Initialize variables
     var minX = false;
@@ -3127,6 +3180,8 @@ Game_Map.prototype._initializeMapLevel = function (id) {
     if (!!this._collisionMap[id]) {
         return;
     }
+
+    this._levels.push(id);
 
     this._collisionMap[id] = {};
     this._arrowCollisionMap[id] = {};
@@ -3949,7 +4004,7 @@ Game_Map.prototype.regionId = function (x, y) {
         return _regionId.call(this, x, y);
     }
 
-    var index = x + this.width() * y;
+    var index = Math.floor(x) + this.width() * Math.floor(y);
     var regionMap = this._regions[this.currentMapLevel];
     var regionLayer = this._regionsLayers[this.currentMapLevel];
 
@@ -3976,6 +4031,14 @@ Game_Map.prototype.regionId = function (x, y) {
 
 Game_Map.prototype.regionIds = function (x, y) {
     return this.regionId(x, y, true);
+};
+
+Game_Map.prototype.getMapLevels = function () {
+    var levels = this._levels.slice(0);
+    levels.sort(function (a, b) {
+        return a - b;
+    });
+    return levels;
 };
 
 var _checkPassage = Game_Map.prototype.checkPassage;
@@ -4563,7 +4626,9 @@ Game_CharacterBase.prototype.distancePerFrame = function () {
 
 var _refreshBushDepth = Game_CharacterBase.prototype.refreshBushDepth;
 Game_CharacterBase.prototype.refreshBushDepth = function () {
-    this._bushDepth = 0;
+    if (!this.hasOwnProperty('_bushDepth')) {
+        this._bushDepth = 0;
+    }
     if (!$gameMap.isTiledMap() || $gameMap.isTiledInitialized()) {
         _refreshBushDepth.call(this);
     } else {
@@ -4611,6 +4676,25 @@ Game_CharacterBase.prototype.isCollidedWithVehicles = function (x, y) {
         return false;
     }
     return true;
+};
+
+Game_CharacterBase.prototype.updateScroll = function (lastScrolledX, lastScrolledY) {
+    var x1 = lastScrolledX;
+    var y1 = lastScrolledY;
+    var x2 = this.scrolledX();
+    var y2 = this.scrolledY();
+    if (y2 > y1 && y2 > this.centerY()) {
+        $gameMap.scrollDown(y2 - y1);
+    }
+    if (x2 < x1 && x2 < this.centerX()) {
+        $gameMap.scrollLeft(x1 - x2);
+    }
+    if (x2 > x1 && x2 > this.centerX()) {
+        $gameMap.scrollRight(x2 - x1);
+    }
+    if (y2 < y1 && y2 < this.centerY()) {
+        $gameMap.scrollUp(y1 - y2);
+    }
 };
 
 /***/ }),
