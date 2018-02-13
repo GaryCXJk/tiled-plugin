@@ -40,6 +40,17 @@ let _fullVehicleData = {
     startY: 0
 };
 
+let _processEncoding = {
+	base64: function(data) {
+		let decodedData = atob(data);
+		let newData = [];
+		for (let idx = 0; idx < decodedData.length; idx+= 4) {
+			newData.push(decodedData.charCodeAt(idx) | ((decodedData.charCodeAt(idx + 1) || 0) << 8) | ((decodedData.charCodeAt(idx + 2) || 0) << 16) | ((decodedData.charCodeAt(idx + 3) || 0) << 24));
+		}
+		return newData;
+	}
+};
+
 TiledManager.addListener = function(objectName, event, callback, recursive = true) {
     if(typeof objectName === 'function') {
         objectName = objectName.name
@@ -111,7 +122,7 @@ TiledManager.hasHideProperties = function(layerData) {
     );
 }
 
-TiledManager.expandLayerGroups = function(parentLayer = false) {
+TiledManager.processTiledData = function(parentLayer = false) {
     if(!parentLayer) {
         parentLayer = $gameData.tiledData
     }
@@ -120,12 +131,25 @@ TiledManager.expandLayerGroups = function(parentLayer = false) {
     }
     for(var idx = 0; idx < parentLayer.layers.length; idx++) {
         let layer = parentLayer.layers[idx];
-        if(layer.type !== 'group') {
-            continue;
+        if(layer.type === 'group') {
+			TiledManager.expandLayerGroups(layer);
+			Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers))
+			idx+= layer.layers.length - 1;
+			continue;
         }
-        TiledManager.expandLayerGroups(layer);
-        Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers))
-        idx+= layer.layers.length - 1;
+		if(layer.type === 'tilelayer') {
+			let encoding = layer.encoding || '';
+			if(encoding && _processEncoding.hasOwnProperty(encoding)) {
+				let encFunc = _processEncoding[encoding];
+				if(layer.data) {
+					layer.data = encFunc(layer.data);
+				} else if(layer.chunks) {
+					layer.chunks.forEach(chunk => {
+						chunk.data = encFunc(chunk.data);
+					});
+				}
+			}
+		}
     }
 }
 

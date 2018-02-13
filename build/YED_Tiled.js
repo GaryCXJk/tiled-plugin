@@ -2245,7 +2245,7 @@ DataManager.loadTiledMapData = function (mapId) {
             (function () {
                 if (xhr.status === 200 || xhr.responseText !== "") {
                     DataManager._tempTiledData = JSON.parse(xhr.responseText);
-                    TiledManager.expandLayerGroups(DataManager._tempTiledData);
+                    TiledManager.processTiledData(DataManager._tempTiledData);
                 }
                 var tiledLoaded = true;
                 var tilesRequired = 0;
@@ -2389,6 +2389,17 @@ var _fullVehicleData = {
     startY: 0
 };
 
+var _processEncoding = {
+    base64: function base64(data) {
+        var decodedData = atob(data);
+        var newData = [];
+        for (var idx = 0; idx < decodedData.length; idx += 4) {
+            newData.push(decodedData.charCodeAt(idx) | (decodedData.charCodeAt(idx + 1) || 0) << 8 | (decodedData.charCodeAt(idx + 2) || 0) << 16 | (decodedData.charCodeAt(idx + 3) || 0) << 24);
+        }
+        return newData;
+    }
+};
+
 TiledManager.addListener = function (objectName, event, callback) {
     var recursive = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
 
@@ -2466,7 +2477,7 @@ TiledManager.hasHideProperties = function (layerData) {
     }).length > 0;
 };
 
-TiledManager.expandLayerGroups = function () {
+TiledManager.processTiledData = function () {
     var parentLayer = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
 
     if (!parentLayer) {
@@ -2477,12 +2488,27 @@ TiledManager.expandLayerGroups = function () {
     }
     for (var idx = 0; idx < parentLayer.layers.length; idx++) {
         var layer = parentLayer.layers[idx];
-        if (layer.type !== 'group') {
+        if (layer.type === 'group') {
+            TiledManager.expandLayerGroups(layer);
+            Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers));
+            idx += layer.layers.length - 1;
             continue;
         }
-        TiledManager.expandLayerGroups(layer);
-        Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers));
-        idx += layer.layers.length - 1;
+        if (layer.type === 'tilelayer') {
+            var encoding = layer.encoding || '';
+            if (encoding && _processEncoding.hasOwnProperty(encoding)) {
+                (function () {
+                    var encFunc = _processEncoding[encoding];
+                    if (layer.data) {
+                        layer.data = encFunc(layer.data);
+                    } else if (layer.chunks) {
+                        layer.chunks.forEach(function (chunk) {
+                            chunk.data = encFunc(chunk.data);
+                        });
+                    }
+                })();
+            }
+        }
     }
 };
 
@@ -4227,6 +4253,10 @@ Game_Map.prototype.renderTileFlags = function (x, y) {
         render = 'main';
     }
     return this.getTileFlags(x, y, render, level);
+};
+
+Game_Map.prototype.getTileFlagLayers = function (level) {
+    return this._tileFlagLayers[level].slice(0);
 };
 
 Game_Map.prototype.checkHasTileFlag = function (x, y, flag) {
