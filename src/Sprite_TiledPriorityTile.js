@@ -15,21 +15,13 @@ window.Sprite_TiledPriorityTile = Sprite_TiledPriorityTile;
 Sprite_TiledPriorityTile.prototype.updateVisibility = function() {
     let visibility = false;
     if(this.layerId > -1) {
-        let layer = $gameMap.tiledData.layers[this.layerId];
-        if(layer.properties.transition) {
-            if(!this._transition) {
-                this._transition = layer.properties.transition;
-                this._baseAlpha = layer.opacity;
-                this._minAlpha = Math.min(this._baseAlpha, (layer.properties.minimumOpacity || 0));
-                this._isShown = !TiledManager.checkLayerHidden(layer);
-                this._transitionPhase = this._isShown ? this._transition : 0
-            } else {
-                this._isShown = !TiledManager.checkLayerHidden(layer);
-                this._transitionPhase = Math.max(0, Math.min(this._transition, this._transitionPhase + (this._isShown ? 1 : -1)));
-            }
-            visibility = this._minAlpha > 0 || this._transitionPhase > 0;
-            this.opacity = 255 * (((this._baseAlpha - this._minAlpha) * (this._transitionPhase / this._transition)) + this._minAlpha);
+        visibility = true;
+        let props = $gameMap.getLayerProperties(this.layerId);
+        if(props.transition) {
+            visibility = props.minAlpha > 0 || props.transitionPhase > 0;
+            this.opacity = 255 * (((props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition)) + props.minAlpha);
         } else {
+            let layer = $gameMap.tiledData.layers[this.layerId];
             visibility = !TiledManager.checkLayerHidden(layer);
         }
     }

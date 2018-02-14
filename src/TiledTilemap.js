@@ -88,16 +88,10 @@ export class TiledTilemap extends ShaderTilemap {
                 continue;
             }
 
-            let layer = new TiledTileLayer(zIndex, [], useSquareShader);
+            let layer = new TiledTileLayer(zIndex, [], useSquareShader, 32);
             layer.layerId = id; // @dryami: hack layer index
             layer.spriteId = Sprite._counter++;
             layer.alpha = layerData.opacity;
-            if(!!layerData.properties && layerData.properties.transition) {
-                layer.transition = layerData.properties.transition
-                layer.isShown = !TiledManager.checkLayerHidden(layerData)
-                layer.transitionStep = layer.isShown ? layer.transition : 0
-                layer.minAlpha = Math.min(layer.alpha, (layerData.properties.minimumOpacity || 0))
-            }
             this._layers.push(layer);
             this.addChild(layer);
             id++;
@@ -456,20 +450,21 @@ export class TiledTilemap extends ShaderTilemap {
 				   hide this layer. */
 				if (TiledManager.hasHideProperties(layerData)) {
 					/* If the layer isn't supposed to be hidden, add the layer to the container */
+                    let props = $gameMap.getLayerProperties(layer.layerId);
 					if (!hideLayer) {
-                        if(layer.transition) {
+                        if(props.transition) {
                             /* If this layer has a transition, we'll need to tell the layer that
                                it's supposed to be showing. */
-                               layer.isShown = true;
+                               props.isShown = true;
                         }
 						this.addChild(layer);
 						continue;
                     }
                     /* Since the layer is supposed to be hidden, let's first let it transition if
                        it has a transition fadeout. */
-                    if(layer.transition) {
-                        layer.isShown = false;
-                        if(layer.minAlpha > 0 || layer.transitionStep > 0) {
+                    if(props.transition) {
+                        props.isShown = false;
+                        if(props.minAlpha > 0 || props.transitionPhase > 0) {
                             this.addChild(layer)
                             continue;
                         }
@@ -581,13 +576,6 @@ export class TiledTilemap extends ShaderTilemap {
         layer.layerId = id;
         layer.spriteId = Sprite._counter++;
         layer.alpha = layerData.opacity;
-        if(TiledManager.hasHideProperties(layerData) && !!layerData.properties.transition) {
-            layer._transition = layerData.properties.transition;
-            layer._baseAlpha = layerData.opacity;
-            layer._minAlpha = Math.min(layer._baseAlpha, (layerData.properties.minimumOpacity || 0));
-            layer._isShown = !TiledManager.checkLayerHidden(layerData);
-            layer._transitionPhase = layer._isShown ? layer._transition : 0
-        }
         layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
         layer.baseX = layerData.x + (layerData.offsetx || 0);
         layer.baseY = layerData.y + (layerData.offsety || 0);
@@ -622,11 +610,10 @@ export class TiledTilemap extends ShaderTilemap {
             let layerData = this.tiledData.layers[layer.layerId];
             if(TiledManager.hasHideProperties(layerData)) {
                 let visibility = TiledManager.checkLayerHidden(layerData);
-                if(!!layerData.properties.transition) {
-                    layer._isShown = !visibility;
-                    layer._transitionPhase = Math.max(0, Math.min(layer._transition, layer._transitionPhase + (layer._isShown ? 1 : -1)));
-                    layer.alpha = (((layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition)) + layer._minAlpha);
-                    visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
+                let props = $gameMap.getLayerProperties(layer.layerId);
+                if(props.transition) {
+                    layer.alpha = (((props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition)) + props.minAlpha);
+                    visibility = props.minAlpha > 0 || props.transitionPhase > 0;
                 }
                 layer.visible = visibility;
             }

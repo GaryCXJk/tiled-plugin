@@ -1053,16 +1053,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                         continue;
                     }
 
-                    var layer = new _TiledTileLayer2.default(zIndex, [], useSquareShader);
+                    var layer = new _TiledTileLayer2.default(zIndex, [], useSquareShader, 32);
                     layer.layerId = id; // @dryami: hack layer index
                     layer.spriteId = Sprite._counter++;
                     layer.alpha = layerData.opacity;
-                    if (!!layerData.properties && layerData.properties.transition) {
-                        layer.transition = layerData.properties.transition;
-                        layer.isShown = !TiledManager.checkLayerHidden(layerData);
-                        layer.transitionStep = layer.isShown ? layer.transition : 0;
-                        layer.minAlpha = Math.min(layer.alpha, layerData.properties.minimumOpacity || 0);
-                    }
                     this._layers.push(layer);
                     this.addChild(layer);
                     id++;
@@ -1695,20 +1689,21 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                            hide this layer. */
                         if (TiledManager.hasHideProperties(layerData)) {
                             /* If the layer isn't supposed to be hidden, add the layer to the container */
+                            var props = $gameMap.getLayerProperties(layer.layerId);
                             if (!hideLayer) {
-                                if (layer.transition) {
+                                if (props.transition) {
                                     /* If this layer has a transition, we'll need to tell the layer that
                                        it's supposed to be showing. */
-                                    layer.isShown = true;
+                                    props.isShown = true;
                                 }
                                 this.addChild(layer);
                                 continue;
                             }
                             /* Since the layer is supposed to be hidden, let's first let it transition if
                                it has a transition fadeout. */
-                            if (layer.transition) {
-                                layer.isShown = false;
-                                if (layer.minAlpha > 0 || layer.transitionStep > 0) {
+                            if (props.transition) {
+                                props.isShown = false;
+                                if (props.minAlpha > 0 || props.transitionPhase > 0) {
                                     this.addChild(layer);
                                     continue;
                                 }
@@ -1836,13 +1831,6 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             layer.layerId = id;
             layer.spriteId = Sprite._counter++;
             layer.alpha = layerData.opacity;
-            if (TiledManager.hasHideProperties(layerData) && !!layerData.properties.transition) {
-                layer._transition = layerData.properties.transition;
-                layer._baseAlpha = layerData.opacity;
-                layer._minAlpha = Math.min(layer._baseAlpha, layerData.properties.minimumOpacity || 0);
-                layer._isShown = !TiledManager.checkLayerHidden(layerData);
-                layer._transitionPhase = layer._isShown ? layer._transition : 0;
-            }
             layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
             layer.baseX = layerData.x + (layerData.offsetx || 0);
             layer.baseY = layerData.y + (layerData.offsety || 0);
@@ -1880,11 +1868,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 var layerData = _this2.tiledData.layers[layer.layerId];
                 if (TiledManager.hasHideProperties(layerData)) {
                     var visibility = TiledManager.checkLayerHidden(layerData);
-                    if (!!layerData.properties.transition) {
-                        layer._isShown = !visibility;
-                        layer._transitionPhase = Math.max(0, Math.min(layer._transition, layer._transitionPhase + (layer._isShown ? 1 : -1)));
-                        layer.alpha = (layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition) + layer._minAlpha;
-                        visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
+                    var props = $gameMap.getLayerProperties(layer.layerId);
+                    if (props.transition) {
+                        layer.alpha = (props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition) + props.minAlpha;
+                        visibility = props.minAlpha > 0 || props.transitionPhase > 0;
                     }
                     layer.visible = visibility;
                 }
@@ -2489,7 +2476,7 @@ TiledManager.processTiledData = function () {
     for (var idx = 0; idx < parentLayer.layers.length; idx++) {
         var layer = parentLayer.layers[idx];
         if (layer.type === 'group') {
-            TiledManager.expandLayerGroups(layer);
+            TiledManager.processTiledData(layer);
             Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers));
             idx += layer.layers.length - 1;
             continue;
@@ -2678,21 +2665,13 @@ window.Sprite_TiledPriorityTile = Sprite_TiledPriorityTile;
 Sprite_TiledPriorityTile.prototype.updateVisibility = function () {
     var visibility = false;
     if (this.layerId > -1) {
-        var layer = $gameMap.tiledData.layers[this.layerId];
-        if (layer.properties.transition) {
-            if (!this._transition) {
-                this._transition = layer.properties.transition;
-                this._baseAlpha = layer.opacity;
-                this._minAlpha = Math.min(this._baseAlpha, layer.properties.minimumOpacity || 0);
-                this._isShown = !TiledManager.checkLayerHidden(layer);
-                this._transitionPhase = this._isShown ? this._transition : 0;
-            } else {
-                this._isShown = !TiledManager.checkLayerHidden(layer);
-                this._transitionPhase = Math.max(0, Math.min(this._transition, this._transitionPhase + (this._isShown ? 1 : -1)));
-            }
-            visibility = this._minAlpha > 0 || this._transitionPhase > 0;
-            this.opacity = 255 * ((this._baseAlpha - this._minAlpha) * (this._transitionPhase / this._transition) + this._minAlpha);
+        visibility = true;
+        var props = $gameMap.getLayerProperties(this.layerId);
+        if (props.transition) {
+            visibility = props.minAlpha > 0 || props.transitionPhase > 0;
+            this.opacity = 255 * ((props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition) + props.minAlpha);
         } else {
+            var layer = $gameMap.tiledData.layers[this.layerId];
             visibility = !TiledManager.checkLayerHidden(layer);
         }
     }
@@ -2807,11 +2786,11 @@ var TiledTileLayer = function (_PIXI$tilemap$Composi) {
                 this.tiledTileShader = new _TiledTileShader2.default(gl, renderer.plugins.tilemap.maxTextures, this.useSquare);
             }
             var alpha = this.alpha;
-            if (this.transition) {
-                this.transitionStep = Math.max(0, Math.min(this.transition, this.transitionStep + (this.isShown ? 1 : -1)));
-                alpha -= this.minAlpha;
-                alpha *= this.transitionStep / this.transition;
-                alpha += this.minAlpha;
+            var props = $gameMap.getLayerProperties(this.layerId);
+            if (props.transition) {
+                alpha -= props.minAlpha;
+                alpha *= props.transitionPhase / props.transition;
+                alpha += props.minAlpha;
             }
             //var shader = renderer.plugins.tilemap.getShader(this.useSquare);
             var shader = this.tiledTileShader;
@@ -2974,6 +2953,7 @@ Game_Map.prototype.setup = function (mapId) {
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
     this._waypoints = {};
+    this._layerProperties = [];
     this._autoSize = false;
     this._autoSizeBorder = 0;
     this._offsets = { x: 0, y: 0 };
@@ -3015,6 +2995,7 @@ Game_Map.prototype.isTiledMap = function () {
 Game_Map.prototype._setupTiled = function () {
     this._initializeMapProperties();
     this._initializeInfiniteMap();
+    this._setLayerProperties();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -3200,6 +3181,20 @@ Game_Map.prototype._cropInfiniteMap = function (layer, offset, limit) {
         o += forward ? 1 : -1;
     }
     return o;
+};
+
+Game_Map.prototype._setLayerProperties = function () {
+    for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
+        var layer = this.tiledData.layers[idx];
+        var layerProperties = Object.assign({}, layer.properties, { layerId: idx });
+        if (layerProperties.transition) {
+            layerProperties.baseAlpha = layer.opacity;
+            layerProperties.minAlpha = Math.min(layerProperties.baseAlpha, layer.properties.minimumOpacity || 0);
+            layerProperties.isShown = !TiledManager.checkLayerHidden(layer);
+            layerProperties.transitionPhase = layerProperties.isShown ? layerProperties.transition : 0;
+        }
+        this._layerProperties.push(layerProperties);
+    }
 };
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -4026,7 +4021,7 @@ var _regionId = Game_Map.prototype.regionId;
 Game_Map.prototype.regionId = function (x, y) {
     var allIds = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
-    if (!this.isTiledMap()) {
+    if (!this.isTiledMap() || !this.isTiledInitialized()) {
         return _regionId.call(this, x, y);
     }
 
@@ -4256,7 +4251,7 @@ Game_Map.prototype.renderTileFlags = function (x, y) {
 };
 
 Game_Map.prototype.getTileFlagLayers = function (level) {
-    return this._tileFlagLayers[level].slice(0);
+    return this._tileFlagsLayers[level].slice(0);
 };
 
 Game_Map.prototype.checkHasTileFlag = function (x, y, flag) {
@@ -4616,6 +4611,28 @@ Game_Map.prototype.waypoint = function (waypoint) {
         return this._waypoints[waypoint];
     }
     return null;
+};
+
+var _update = Game_Map.prototype.update;
+Game_Map.prototype.update = function (sceneActive) {
+    this.setLayerProperties();
+    _update.call(this, sceneActive);
+};
+
+Game_Map.prototype.getLayerProperties = function (layerId) {
+    return Object.assign({}, this._layerProperties[layerId]);
+};
+
+Game_Map.prototype.setLayerProperties = function () {
+    var _this2 = this;
+
+    this._layerProperties.forEach(function (props, i) {
+        var layer = _this2.tiledData.layers[i];
+        if (props.transition) {
+            props.isShown = !TiledManager.checkLayerHidden(layer);
+            props.transitionPhase = Math.max(0, Math.min(props.transition, props.transitionPhase + (props.isShown ? 1 : -1)));
+        }
+    });
 };
 
 /***/ }),

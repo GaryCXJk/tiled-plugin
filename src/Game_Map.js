@@ -47,6 +47,7 @@ Game_Map.prototype.setup = function (mapId) {
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
     this._waypoints = {};
+    this._layerProperties = [];
     this._autoSize = false;
     this._autoSizeBorder = 0;
     this._offsets = { x: 0, y: 0 };
@@ -88,6 +89,7 @@ Game_Map.prototype.isTiledMap = function () {
 Game_Map.prototype._setupTiled = function () {
     this._initializeMapProperties();
     this._initializeInfiniteMap();
+    this._setLayerProperties();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -268,6 +270,20 @@ Game_Map.prototype._cropInfiniteMap = function(layer, offset, limit, forward = t
 		o+= forward ? 1 : -1;
 	}
 	return o;
+}
+
+Game_Map.prototype._setLayerProperties = function() {
+    for (let idx = 0; idx < this.tiledData.layers.length; idx++) {
+        let layer = this.tiledData.layers[idx];
+        let layerProperties = Object.assign({}, layer.properties, {layerId: idx});
+        if(layerProperties.transition) {
+            layerProperties.baseAlpha = layer.opacity;
+            layerProperties.minAlpha = Math.min(layerProperties.baseAlpha, (layer.properties.minimumOpacity || 0));
+            layerProperties.isShown = !TiledManager.checkLayerHidden(layer);
+            layerProperties.transitionPhase = layerProperties.isShown ? layerProperties.transition : 0;
+        }
+        this._layerProperties.push(layerProperties);
+    }
 }
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -884,7 +900,7 @@ Game_Map.prototype.height = function () {
 
 let _regionId = Game_Map.prototype.regionId;
 Game_Map.prototype.regionId = function (x, y, allIds = false) {
-    if (!this.isTiledMap()) {
+    if (!this.isTiledMap() || !this.isTiledInitialized()) {
         return _regionId.call(this, x, y);
     }
 
@@ -1096,7 +1112,7 @@ Game_Map.prototype.renderTileFlags = function (x, y, render = 'main', level = 0)
 }
 
 Game_Map.prototype.getTileFlagLayers = function(level) {
-    return this._tileFlagLayers[level].slice(0);
+    return this._tileFlagsLayers[level].slice(0);
 }
 
 Game_Map.prototype.checkHasTileFlag = function (x, y, flag, render = false, level = false) {
@@ -1390,4 +1406,24 @@ Game_Map.prototype.waypoint = function(waypoint) {
         return this._waypoints[waypoint];
     }
     return null;
+}
+
+let _update = Game_Map.prototype.update
+Game_Map.prototype.update = function(sceneActive) {
+    this.setLayerProperties();
+    _update.call(this, sceneActive);
+}
+
+Game_Map.prototype.getLayerProperties = function(layerId) {
+    return Object.assign({}, this._layerProperties[layerId]);
+}
+
+Game_Map.prototype.setLayerProperties = function() {
+    this._layerProperties.forEach((props, i) => {
+        let layer = this.tiledData.layers[i];
+        if(props.transition) {
+            props.isShown = !TiledManager.checkLayerHidden(layer);
+            props.transitionPhase = Math.max(0, Math.min(props.transition, props.transitionPhase + (props.isShown ? 1 : -1)));
+        }
+    });
 }

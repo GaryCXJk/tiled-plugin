@@ -132,7 +132,7 @@ TiledManager.processTiledData = function(parentLayer = false) {
     for(var idx = 0; idx < parentLayer.layers.length; idx++) {
         let layer = parentLayer.layers[idx];
         if(layer.type === 'group') {
-			TiledManager.expandLayerGroups(layer);
+			TiledManager.processTiledData(layer);
 			Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers))
 			idx+= layer.layers.length - 1;
 			continue;
