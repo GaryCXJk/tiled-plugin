@@ -24,6 +24,8 @@ let _tileFlagIndex = 1;
 let _vehicles = {};
 let _vehiclesByIndex = [];
 
+let _autoFunctions = {};
+
 let _pluginCommands = {};
 
 let _fullVehicleData = {
@@ -269,6 +271,14 @@ TiledManager.getParameterVehicles = function() {
             TiledManager.createVehicle(vehicleData.vehicleName, vehicleData);
         })
     }
+}
+
+TiledManager.setAutoFunction = function(identifier, functions = {}) {
+    _autoFunctions[identifier] = functions;
+}
+
+TiledManager.getAutoFunction = function(identifier) {
+    return _autoFunctions[identifier] || false;
 }
 
 /* PLUGIN COMMANDS */

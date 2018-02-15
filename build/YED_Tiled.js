@@ -1772,6 +1772,8 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var viewportDeltaX = 0;
             var viewportDeltaY = 0;
 
+            var props = $gameMap.getLayerProperties(id);
+
             if (!!layerData.properties) {
                 if (!!layerData.properties.ignoreLoading) {
                     return;
@@ -1832,6 +1834,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             layer.spriteId = Sprite._counter++;
             layer.alpha = layerData.opacity;
             layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+            layer.bitmap.addLoadListener(function () {
+                props.imageWidth = layer.bitmap.width;
+                props.imageHeight = layer.bitmap.height;
+            });
             layer.baseX = layerData.x + (layerData.offsetx || 0);
             layer.baseY = layerData.y + (layerData.offsety || 0);
             layer.z = layer.zIndex = zIndex;
@@ -1866,9 +1872,9 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
 
             this._parallaxlayers.forEach(function (layer) {
                 var layerData = _this2.tiledData.layers[layer.layerId];
+                var props = $gameMap.getLayerProperties(layer.layerId);
                 if (TiledManager.hasHideProperties(layerData)) {
                     var visibility = TiledManager.checkLayerHidden(layerData);
-                    var props = $gameMap.getLayerProperties(layer.layerId);
                     if (props.transition) {
                         layer.alpha = (props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition) + props.minAlpha;
                         visibility = props.minAlpha > 0 || props.transitionPhase > 0;
@@ -1883,45 +1889,25 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
                 };
                 if (!!layer.origin) {
+                    var autoX = props.autoXFunction ? props.autoXFunction(props.autoX, props.autoY || 0) : 0;
+                    var autoY = props.autoYFunction ? props.autoYFunction(props.autoX || 0, props.autoY) : 0;
                     if (!layer.repeatX) {
-                        layer.origin.x = layer.baseX - offsets.x + layer.autoX;
+                        layer.origin.x = layer.baseX - offsets.x + autoX;
                         layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                         layer.width = layer.bitmap.width;
                     } else {
-                        layer.origin.x = layer.baseX - offsets.x + layer.autoX + display.x * layer.deltaX;
+                        layer.origin.x = layer.baseX - offsets.x + autoX + display.x * layer.deltaX;
                         layer.x = 0;
                         layer.width = Graphics.width;
                     }
                     if (!layer.repeatY) {
-                        layer.origin.y = layer.baseY - offsets.y + layer.autoY;
+                        layer.origin.y = layer.baseY - offsets.y + autoY;
                         layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                         layer.height = layer.bitmap.height;
                     } else {
-                        layer.origin.y = layer.baseY - offsets.y + layer.autoY + display.y * layer.deltaY;
+                        layer.origin.y = layer.baseY - offsets.y + autoY + display.y * layer.deltaY;
                         layer.y = 0;
                         layer.height = Graphics.height;
-                    }
-                    layer.autoX += layer.stepAutoX;
-                    layer.autoY += layer.stepAutoY;
-                    if (layer.bitmap.width > 0) {
-                        while (layer.autoX > layer.bitmap.width) {
-                            layer.autoX -= layer.bitmap.width;
-                        }
-                        while (layer.autoX < 0) {
-                            layer.autoX += layer.bitmap.width;
-                        }
-                    } else {
-                        layer.autoX = 0;
-                    }
-                    if (layer.bitmap.height > 0) {
-                        while (layer.autoY > layer.bitmap.height) {
-                            layer.autoY -= layer.bitmap.height;
-                        }
-                        while (layer.autoY < 0) {
-                            layer.autoY += layer.bitmap.height;
-                        }
-                    } else {
-                        layer.autoY = 0;
                     }
                 } else {
                     layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
@@ -2085,6 +2071,35 @@ TiledManager.addFlag('heal');
 TiledManager.createVehicle('boat', true);
 TiledManager.createVehicle('ship', true);
 TiledManager.createVehicle('airship', true);
+
+/* INITIALIZES AUTO FUNCTIONS */
+
+TiledManager.setAutoFunction('linear', {
+    x: function x(_x, y) {
+        return _x;
+    },
+    y: function y(x, _y) {
+        return _y;
+    }
+});
+
+TiledManager.setAutoFunction('sine', {
+    x: function x(_x2, y) {
+        return Math.sin(_x2 * Math.PI / 180);
+    },
+    y: function y(x, _y2) {
+        return Math.sin(_y2 * Math.PI / 180);
+    }
+});
+
+TiledManager.setAutoFunction('cosine', {
+    x: function x(_x3, y) {
+        return Math.cos(_x3 * Math.PI / 180);
+    },
+    y: function y(x, _y3) {
+        return Math.cos(_y3 * Math.PI / 180);
+    }
+});
 
 /* INITIALIZES PLUGIN COMMANDS */
 
@@ -2360,6 +2375,8 @@ var _tileFlagIndex = 1;
 var _vehicles = {};
 var _vehiclesByIndex = [];
 
+var _autoFunctions = {};
+
 var _pluginCommands = {};
 
 var _fullVehicleData = {
@@ -2627,6 +2644,16 @@ TiledManager.getParameterVehicles = function () {
             TiledManager.createVehicle(vehicleData.vehicleName, vehicleData);
         });
     }
+};
+
+TiledManager.setAutoFunction = function (identifier) {
+    var functions = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    _autoFunctions[identifier] = functions;
+};
+
+TiledManager.getAutoFunction = function (identifier) {
+    return _autoFunctions[identifier] || false;
 };
 
 /* PLUGIN COMMANDS */
@@ -3184,6 +3211,7 @@ Game_Map.prototype._cropInfiniteMap = function (layer, offset, limit) {
 };
 
 Game_Map.prototype._setLayerProperties = function () {
+    var autoFunctions = {};
     for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
         var layer = this.tiledData.layers[idx];
         var layerProperties = Object.assign({}, layer.properties, { layerId: idx });
@@ -3192,6 +3220,46 @@ Game_Map.prototype._setLayerProperties = function () {
             layerProperties.minAlpha = Math.min(layerProperties.baseAlpha, layer.properties.minimumOpacity || 0);
             layerProperties.isShown = !TiledManager.checkLayerHidden(layer);
             layerProperties.transitionPhase = layerProperties.isShown ? layerProperties.transition : 0;
+        }
+        if (layerProperties.autoX) {
+            layerProperties.autoSpeedX = layerProperties.autoX;
+            layerProperties.autoX = 0;
+            layerProperties.imageWidth = layerProperties.imageWidth || 0;
+            var funcX = 'linear';
+            if (layerProperties.autoFunctionX) {
+                funcX = layerProperties.autoFunctionX;
+            } else if (layerProperties.autoFunction) {
+                funcX = layerProperties.autoFunction;
+            }
+            var tFuncX = TiledManager.getAutoFunction(funcX);
+            if (tFuncX) {
+                layerProperties.autoXFunction = tFuncX.x || tFuncX.both;
+            } else {
+                if (!autoFunctions[funcX]) {
+                    autoFunctions[funcX] = new Function('x', 'y', funcX);
+                }
+                layerProperties.autoXFunction = autoFunctions[funcX];
+            }
+        }
+        if (layerProperties.autoY) {
+            layerProperties.autoSpeedY = layerProperties.autoY;
+            layerProperties.autoY = 0;
+            layerProperties.imageHeight = layerProperties.imageHeight || 0;
+            var funcY = 'linear';
+            if (layerProperties.autoFunctionY) {
+                funcY = layerProperties.autoFunctionY;
+            } else if (layerProperties.autoFunction) {
+                funcY = layerProperties.autoFunction;
+            }
+            var tFuncY = TiledManager.getAutoFunction(funcY);
+            if (tFuncY) {
+                layerProperties.autoYFunction = tFuncY.y || tFuncY.both;
+            } else {
+                if (!autoFunctions[funcY]) {
+                    autoFunctions[funcY] = new Function('x', 'y', funcY);
+                }
+                layerProperties.autoYFunction = autoFunctions[funcY];
+            }
         }
         this._layerProperties.push(layerProperties);
     }
@@ -4631,6 +4699,28 @@ Game_Map.prototype.setLayerProperties = function () {
         if (props.transition) {
             props.isShown = !TiledManager.checkLayerHidden(layer);
             props.transitionPhase = Math.max(0, Math.min(props.transition, props.transitionPhase + (props.isShown ? 1 : -1)));
+        }
+        if (props.autoSpeedX) {
+            props.autoX += props.autoSpeedX;
+            if (props.autoDuration || props.imageWidth) {
+                while (props.autoX < 0) {
+                    props.autoX += props.autoDuration || props.imageWidth;
+                }
+                while (props.autoX > props.imageWidth) {
+                    props.autoX -= props.autoDuration || props.imageWidth;
+                }
+            }
+        }
+        if (props.autoSpeedY) {
+            props.autoY += props.autoSpeedY;
+            if (props.imageHeight) {
+                while (props.autoY < 0) {
+                    props.autoY += props.autoDuration || props.imageHeight;
+                }
+                while (props.autoY > props.imageHeight) {
+                    props.autoY -= props.autoDuration || props.imageHeight;
+                }
+            }
         }
     });
 };

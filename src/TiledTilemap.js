@@ -517,6 +517,8 @@ export class TiledTilemap extends ShaderTilemap {
 		let viewportDeltaX = 0;
 		let viewportDeltaY = 0;
 
+        let props = $gameMap.getLayerProperties(id);
+
         if(!!layerData.properties) {
             if(!!layerData.properties.ignoreLoading) {
                 return;
@@ -577,6 +579,10 @@ export class TiledTilemap extends ShaderTilemap {
         layer.spriteId = Sprite._counter++;
         layer.alpha = layerData.opacity;
         layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+        layer.bitmap.addLoadListener(() => {
+            props.imageWidth = layer.bitmap.width;
+            props.imageHeight = layer.bitmap.height;
+        })
         layer.baseX = layerData.x + (layerData.offsetx || 0);
         layer.baseY = layerData.y + (layerData.offsety || 0);
         layer.z = layer.zIndex = zIndex;
@@ -608,9 +614,9 @@ export class TiledTilemap extends ShaderTilemap {
     updateParallax() {
         this._parallaxlayers.forEach(layer => {
             let layerData = this.tiledData.layers[layer.layerId];
+            let props = $gameMap.getLayerProperties(layer.layerId);
             if(TiledManager.hasHideProperties(layerData)) {
                 let visibility = TiledManager.checkLayerHidden(layerData);
-                let props = $gameMap.getLayerProperties(layer.layerId);
                 if(props.transition) {
                     layer.alpha = (((props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition)) + props.minAlpha);
                     visibility = props.minAlpha > 0 || props.transitionPhase > 0;
@@ -625,45 +631,25 @@ export class TiledTilemap extends ShaderTilemap {
                 y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
             }
             if(!!layer.origin) {
+                let autoX = props.autoXFunction ? props.autoXFunction(props.autoX, props.autoY || 0) : 0;
+                let autoY = props.autoYFunction ? props.autoYFunction(props.autoX || 0, props.autoY) : 0;
                 if(!layer.repeatX) {
-                    layer.origin.x = layer.baseX - offsets.x + layer.autoX;
+                    layer.origin.x = layer.baseX - offsets.x + autoX;
                     layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                     layer.width = layer.bitmap.width;
                 } else {
-                    layer.origin.x = layer.baseX - offsets.x + layer.autoX + display.x * layer.deltaX;
+                    layer.origin.x = layer.baseX - offsets.x + autoX + display.x * layer.deltaX;
                     layer.x = 0;
                     layer.width = Graphics.width;
                 }
                 if(!layer.repeatY) {
-                    layer.origin.y = layer.baseY - offsets.y + layer.autoY;
+                    layer.origin.y = layer.baseY - offsets.y + autoY;
                     layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                     layer.height = layer.bitmap.height;
                 } else {
-                    layer.origin.y = layer.baseY - offsets.y + layer.autoY + display.y * layer.deltaY;
+                    layer.origin.y = layer.baseY - offsets.y + autoY + display.y * layer.deltaY;
                     layer.y = 0;
                     layer.height = Graphics.height;
-                }
-                layer.autoX+= layer.stepAutoX;
-                layer.autoY+= layer.stepAutoY;
-                if(layer.bitmap.width > 0) {
-                    while(layer.autoX > layer.bitmap.width) {
-                        layer.autoX-= layer.bitmap.width;
-                    }
-                    while(layer.autoX < 0) {
-                        layer.autoX+= layer.bitmap.width;
-                    }
-                } else {
-                    layer.autoX = 0
-                }
-                if(layer.bitmap.height > 0) {
-                    while(layer.autoY > layer.bitmap.height) {
-                        layer.autoY-= layer.bitmap.height;
-                    }
-                    while(layer.autoY < 0) {
-                        layer.autoY+= layer.bitmap.height;
-                    }
-                } else {
-                    layer.autoY = 0
                 }
             } else {
                 layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
