@@ -323,7 +323,28 @@ Game_Map.prototype._setLayerProperties = function() {
                 layerProperties.autoYFunction = autoFunctions[funcY];
             }
         }
+        this._getLayerTilesets(layer, layerProperties);
         this._layerProperties.push(layerProperties);
+    }
+}
+
+Game_Map.prototype._getLayerTilesets = function(layer, props) {
+    if(layer.type !== 'tilelayer') {
+        return;
+    }
+    let width = this.width();
+    let height = this.height();
+    let size = width * height;
+    props.tilesets = [];
+    for (let i of Array(size).keys()) {
+        let tileId = TiledManager.extractTileId(layer, i);
+        if (!!tileId) {
+            let tilesetId = this._getTilesetId(tileId);
+            if(tilesetId === -1 || props.tilesets.indexOf(tilesetId) > -1) {
+                continue;
+            }
+            props.tilesets.push(tilesetId);
+        }
     }
 }
 
@@ -907,6 +928,19 @@ Game_Map.prototype._getTileset = function(tileId) {
     return null;
 };
 
+Game_Map.prototype._getTilesetId = function(tileId) {
+    for(let idx = 0; idx < this.tiledData.tilesets.length; idx++) {
+        let tileset = this.tiledData.tilesets[idx];
+        if(tileId >= tileset.firstgid && tileId < tileset.firstgid + tileset.tilecount) {
+                if(tileset.properties && tileset.properties.ignoreLoading) {
+                    return -1;
+                }
+                return idx;
+        }
+    }
+    return -1;
+};
+
 Game_Map.prototype.tileWidth = function () {
     let tileWidth = this.tiledData.tilewidth;
     if (this.isHalfTile()) {
@@ -1328,7 +1362,7 @@ Game_Map.prototype.isHealFloor = function(x, y, render = false, level = false) {
     return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'heal', render);
 };
 
-Game_Map.prototype.getLayerProperties = function(layer = -1, ignoreHidden = true) {
+Game_Map.prototype.getAllLayerProperties = function(layer = -1, ignoreHidden = true) {
 	if(layer > -1) {
 		if(this.tiledData.layers[layer] && this.tiledData.layers[layer].properties) {
 			return Object.assign({}, this.tiledData.layers[layer].properties);
