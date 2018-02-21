@@ -242,7 +242,8 @@ export class TiledTilemap extends ShaderTilemap {
                 continue;
             }
             let tileId = obj.gid;
-            let textureId = this._getTextureId(tileId);
+            let realTileId = tileId & 0x1FFFFFFF;
+            let textureId = this._getTextureId(realTileId);
             let offsets = $gameMap.offsets();
             let dx = obj.x - (startX + offsets.x) * this._tileWidth;
             let dy = obj.y - (startY + offsets.y) * this._tileHeight - obj.height;
@@ -329,11 +330,13 @@ export class TiledTilemap extends ShaderTilemap {
 
     _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight = 0, zIndex = false) {
         let tileset = this.tiledData.tilesets[textureId];
-        var tile = tileset.tiles ? tileset.tiles[tileId - tileset.firstgid] || {} : {};
+        let tileOrientation = (tileId >> 24) & 0xe0;
+        let realTileId = tileId & 0x1FFFFFFF;
+        var tile = tileset.tiles ? tileset.tiles[realTileId - tileset.firstgid] || {} : {};
         let w = tile.imagewidth || tileset.tilewidth;
         let h = tile.imageheight || tileset.tileheight;
         let tileCols = tileset.columns;
-        let rId = this._getAnimTileId(textureId, tileId - tileset.firstgid);
+        let rId = this._getAnimTileId(textureId, realTileId - tileset.firstgid);
         let ux = (rId % tileCols) * w;
         let uy = Math.floor(rId / tileCols) * h;
         let sprite = this._priorityTiles[this._priorityTilesCount];
@@ -342,6 +345,8 @@ export class TiledTilemap extends ShaderTilemap {
         let offsetY = layerData ? layerData.offsety || 0 : 0;
         let ox = 0;
         let oy = 0;
+        let flipH = tileOrientation === 0x20 || ((tileOrientation & 0x80) > 0);
+        let flipV = tileOrientation === 0x20 || ((tileOrientation & 0x40) > 0);
         if (this.roundPixels) {
             ox = Math.floor(this.origin.x);
             oy = Math.floor(this.origin.y);
@@ -364,16 +369,18 @@ export class TiledTilemap extends ShaderTilemap {
 
         sprite.layerId = layerId;
         sprite.anchor.x = 0.5;
-        sprite.anchor.y = 1.0;
+        sprite.anchor.y = (flipV ? 0.0 : 1.0);
         sprite.origX = dx;
         sprite.origY = dy;
+        sprite.scale.x = (flipH ? -1 : 1);
+        sprite.scale.y = (flipV ? -1 : 1);
         sprite.x = sprite.origX + startX * this._tileWidth - ox + offsetX + w / 2;
         sprite.y = sprite.origY + startY * this._tileHeight - oy + offsetY + h;
         
-        let realTextureId = this._getTextureId(tileId, true);
+        let realTextureId = this._getTextureId(realTileId, true);
         if(Array.isArray(this.indexedBitmaps[realTextureId])) {
-            var tile = tileset.tiles[tileId - tileset.firstgid];
-            sprite.bitmap = this.indexedBitmaps[realTextureId][tileId - tileset.firstgid];
+            var tile = tileset.tiles[realTileId - tileset.firstgid];
+            sprite.bitmap = this.indexedBitmaps[realTextureId][realTileId - tileset.firstgid];
             sprite.setFrame(0, 0, tile.imagewidth, tile.imageheight);
         } else {
             sprite.bitmap = this.indexedBitmaps[realTextureId];
