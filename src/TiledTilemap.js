@@ -307,10 +307,6 @@ export class TiledTilemap extends ShaderTilemap {
         let ux = (rId % tileCols) * w;
         let uy = Math.floor(rId / tileCols) * h;
 
-        if(props.tilesets && props.tilesets.indexOf(textureId) > -1) {
-            textureId = props.tilesets.indexOf(textureId);
-        }
-
         if (this._isPriorityTile(layer.layerId)) {
             let positionHeight = 0;
             if(this.tiledData.layers[layer.layerId].properties.positionHeight) {
@@ -323,6 +319,10 @@ export class TiledTilemap extends ShaderTilemap {
             }
             this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
             return;
+        }
+
+        if(props.tilesets && props.tilesets.indexOf(textureId) > -1) {
+            textureId = props.tilesets.indexOf(textureId);
         }
 
         rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);

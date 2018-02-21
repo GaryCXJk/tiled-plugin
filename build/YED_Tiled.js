@@ -1495,10 +1495,6 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var ux = rId % tileCols * w;
             var uy = Math.floor(rId / tileCols) * h;
 
-            if (props.tilesets && props.tilesets.indexOf(textureId) > -1) {
-                textureId = props.tilesets.indexOf(textureId);
-            }
-
             if (this._isPriorityTile(layer.layerId)) {
                 var positionHeight = 0;
                 if (this.tiledData.layers[layer.layerId].properties.positionHeight) {
@@ -1509,6 +1505,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 }
                 this._paintPriorityTile(layer.layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
                 return;
+            }
+
+            if (props.tilesets && props.tilesets.indexOf(textureId) > -1) {
+                textureId = props.tilesets.indexOf(textureId);
             }
 
             rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
