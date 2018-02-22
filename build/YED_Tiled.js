@@ -1510,6 +1510,9 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             if (props.tilesets && props.tilesets.indexOf(textureId) > -1) {
                 textureId = props.tilesets.indexOf(textureId);
             }
+            if (!rectLayer) {
+                console.log(layer);
+            }
 
             rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
         }
@@ -4236,6 +4239,9 @@ Game_Map.prototype.regionId = function (x, y) {
 
     var index = Math.floor(x) + this.width() * Math.floor(y);
     var regionMap = this._regions[this.currentMapLevel];
+    if (!regionMap) {
+        return allIds ? [0] : 0;
+    }
     var regionLayer = this._regionsLayers[this.currentMapLevel];
 
     var regionValue = regionMap.main[index];
@@ -4284,6 +4290,9 @@ Game_Map.prototype.checkPassage = function (x, y, bit) {
     }
     var index = x + this.width() * y;
     var arrows = this._arrowCollisionMap[level];
+    if (!arrows) {
+        return true;
+    }
     var arrowLayer = this._arrowCollisionMapLayers[level];
     var arrowValue = arrows.main[index];
 
@@ -4338,6 +4347,9 @@ Game_Map.prototype.isPassable = function (x, y, d) {
 
     var index = x + this.width() * y;
     var collisionMap = this._collisionMap[level];
+    if (!collisionMap) {
+        return true;
+    }
     var collisionLayer = this._collisionMapLayers[level];
     var collisionValue = collisionMap.main[index];
 
@@ -4376,6 +4388,9 @@ Game_Map.prototype.getIsPassableLayers = function (level) {
 
 Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     var mapLevelChange = this._mapLevelChange[this.currentMapLevel];
+    if (!mapLevelChange) {
+        return false;
+    }
     var mapLevelChangeLayer = this._mapLevelChangeLayers[this.currentMapLevel];
     var index = y * this.width() + x;
     var mapLevelChangeValue = mapLevelChange.main[index];
@@ -4403,6 +4418,9 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
 
 Game_Map.prototype.checkPositionHeight = function (x, y) {
     var positionHeightChange = this._positionHeightChange[this.currentMapLevel];
+    if (!positionHeightChange) {
+        return -1;
+    }
     var positionHeightChangeLayer = this._positionHeightChangeLayers[this.currentMapLevel];
     var index = y * this.width() + x;
     var positionHeightChangeValue = positionHeightChange.main[index];
@@ -4428,6 +4446,9 @@ Game_Map.prototype.getTileFlags = function (x, y) {
     }
     var index = x + this.width() * y;
     var tileFlags = this._tileFlags[level];
+    if (!tileFlags) {
+        return [];
+    }
     var tileFlagsLayer = this._tileFlagsLayers[level];
     var tileFlagsValue = tileFlags.main[index] ? tileFlags.main[index].slice(0) : [];
 

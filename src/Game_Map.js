@@ -981,6 +981,9 @@ Game_Map.prototype.regionId = function (x, y, allIds = false) {
 
     let index = Math.floor(x) + this.width() * Math.floor(y);
     let regionMap = this._regions[this.currentMapLevel];
+    if(!regionMap) {
+        return allIds ? [0] : 0;
+    }
     let regionLayer = this._regionsLayers[this.currentMapLevel];
     
     let regionValue = regionMap.main[index];
@@ -1026,6 +1029,9 @@ Game_Map.prototype.checkPassage = function (x, y, bit, render = false, level = f
     }
     let index = x + this.width() * y;
     let arrows = this._arrowCollisionMap[level];
+    if(!arrows) {
+        return true;
+    }
     let arrowLayer = this._arrowCollisionMapLayers[level];
     let arrowValue = arrows.main[index];
     
@@ -1074,6 +1080,9 @@ Game_Map.prototype.isPassable = function (x, y, d, render = false, level = false
     
     let index = x + this.width() * y;
     let collisionMap = this._collisionMap[level];
+    if(!collisionMap) {
+        return true;
+    }
     let collisionLayer = this._collisionMapLayers[level];
     let collisionValue = collisionMap.main[index]
     
@@ -1109,6 +1118,9 @@ Game_Map.prototype.getIsPassableLayers = function(level) {
 
 Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     let mapLevelChange = this._mapLevelChange[this.currentMapLevel];
+    if(!mapLevelChange) {
+        return false;
+    }
     let mapLevelChangeLayer = this._mapLevelChangeLayers[this.currentMapLevel];
     let index = y * this.width() + x;
     let mapLevelChangeValue = mapLevelChange.main[index]
@@ -1136,9 +1148,12 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
 
 Game_Map.prototype.checkPositionHeight = function (x, y) {
     let positionHeightChange = this._positionHeightChange[this.currentMapLevel];
+    if(!positionHeightChange) {
+        return -1;
+    }
     let positionHeightChangeLayer = this._positionHeightChangeLayers[this.currentMapLevel];
     let index = y * this.width() + x;
-    let positionHeightChangeValue = positionHeightChange.main[index]
+    let positionHeightChangeValue = positionHeightChange.main[index];
     if(positionHeightChangeLayer.length > 0) {
         for(let idx = 0; idx < positionHeightChangeLayer.length; idx++) {
             let layerId = positionHeightChangeLayer[idx];
@@ -1158,6 +1173,9 @@ Game_Map.prototype.getTileFlags = function (x, y, render = false, level = false)
     }
     let index = x + this.width() * y;
     let tileFlags = this._tileFlags[level];
+    if(!tileFlags) {
+        return [];
+    }
     let tileFlagsLayer = this._tileFlagsLayers[level];
     let tileFlagsValue = (tileFlags.main[index] ? tileFlags.main[index].slice(0) : []);
 

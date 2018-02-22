@@ -324,7 +324,7 @@ export class TiledTilemap extends ShaderTilemap {
         if(props.tilesets && props.tilesets.indexOf(textureId) > -1) {
             textureId = props.tilesets.indexOf(textureId);
         }
-
+        
         rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
     }
 
