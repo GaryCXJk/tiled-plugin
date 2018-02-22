@@ -1510,9 +1510,6 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             if (props.tilesets && props.tilesets.indexOf(textureId) > -1) {
                 textureId = props.tilesets.indexOf(textureId);
             }
-            if (!rectLayer) {
-                console.log(layer);
-            }
 
             rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
         }
@@ -5230,7 +5227,7 @@ Game_Player.prototype.performTransfer = function () {
                 }
             }
             var offsets = $gameMap.offsets();
-            if (offsets && offsets.x && offsets.y) {
+            if (offsets && offsets.hasOwnProperty('x') && offsets.hasOwnProperty('y')) {
                 newX -= offsets.x;
                 newY -= offsets.y;
             }

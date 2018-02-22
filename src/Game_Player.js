@@ -136,7 +136,7 @@ Game_Player.prototype.performTransfer = function() {
                 }
             }
             let offsets = $gameMap.offsets();
-            if(offsets && offsets.x && offsets.y) {
+            if(offsets && offsets.hasOwnProperty('x') && offsets.hasOwnProperty('y')) {
                 newX-= offsets.x;
                 newY-= offsets.y;
             }
