@@ -1542,3 +1542,41 @@ Game_Map.prototype.setLayerProperties = function() {
         }
     });
 }
+
+let _battleback1Name = Game_Map.prototype.battleback1Name
+Game_Map.prototype.battleback1Name = function() {
+    if(!this.isTiledMap()) {
+        return _battleback1Name.call(this);
+    }
+    let tileProps = Game_Map.prototype.getTileProperties($gamePlayer.x, $gamePlayer.y);
+    let battleback = false;
+    Object.keys(tileProps).forEach((layerId) => {
+        let props = tileProps[layerId];
+        if(props.hasOwnProperty('battleback1Name')) {
+            battleback = props.battleback1Name;
+        }
+    })
+    if(battleback || battleback === '') {
+        return battleback;
+    }
+    return _battleback1Name.call(this);
+};
+
+let _battleback2Name = Game_Map.prototype.battleback2Name
+Game_Map.prototype.battleback2Name = function() {
+    if(!this.isTiledMap()) {
+        return _battleback2Name.call(this);
+    }
+    let tileProps = Game_Map.prototype.getTileProperties($gamePlayer.x, $gamePlayer.y);
+    let battleback = false;
+    Object.keys(tileProps).forEach((layerId) => {
+        let props = tileProps[layerId];
+        if(props.hasOwnProperty('battleback2Name')) {
+            battleback = props.battleback2Name;
+        }
+    })
+    if(battleback || battleback === '') {
+        return battleback;
+    }
+    return _battleback2Name.call(this);
+};
