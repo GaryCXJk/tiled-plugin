@@ -31,7 +31,20 @@ Spriteset_Map.prototype.loadTileset = function () {
         if(tileset.properties && tileset.properties.ignoreLoading) {
             continue;
         }
-        this._tilemap.bitmaps[i] = ImageManager.loadParserTileset(tileset.image, 0);
+        if(tileset.image) {
+            let bitmap = ImageManager.loadParserTileset(tileset.image, 0);
+            this._tilemap.bitmaps.push(bitmap);
+            this._tilemap.indexedBitmaps[i] = bitmap;
+        } else {
+            this._tilemap.indexedBitmaps[i] = [];
+            for(let tile = 0; tile < tileset.tilecount; tile++) {
+                if(tileset.tiles[tile]) {
+                    let bitmap = ImageManager.loadParserTileset(tileset.tiles[tile].image, 0);
+                    this._tilemap.bitmaps.push(bitmap);
+                    this._tilemap.indexedBitmaps[i][tile] = bitmap;
+                }
+            }
+        }
         i++;
     }
     this._tilemap.refreshTileset();
@@ -44,7 +57,7 @@ Spriteset_Map.prototype.update = function () {
     //Disabed updateHideOnLevel, since it got moved to the general layer hide functions
     //this._updateHideOnLevel();
     this._updateHideOnSpecial();
-    this._tilemap.updateParallax();
+    this._tilemap.updateImageLayer();
 };
 
 Spriteset_Map.prototype.updateTileset = function () {

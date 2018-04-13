@@ -975,6 +975,11 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+var pluginParams = PluginManager.parameters("YED_Tiled");
+/**
+ * This class handles the tilemap
+ */
+
 var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
     _inherits(TiledTilemap, _ShaderTilemap);
 
@@ -985,25 +990,27 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
     }
 
     _createClass(TiledTilemap, [{
-        key: 'initialize',
+        key: "initialize",
         value: function initialize(tiledData) {
+            this.indexedBitmaps = [];
             this._tiledData = {};
             this._layers = [];
-            this._parallaxlayers = [];
+            this._imageLayers = [];
+            this._objectTiles = [];
             this._priorityTiles = [];
             this._priorityTilesCount = 0;
             this.tiledData = tiledData;
-            _get(TiledTilemap.prototype.__proto__ || Object.getPrototypeOf(TiledTilemap.prototype), 'initialize', this).call(this);
+            _get(TiledTilemap.prototype.__proto__ || Object.getPrototypeOf(TiledTilemap.prototype), "initialize", this).call(this);
             this.setupTiled();
         }
     }, {
-        key: 'setupTiled',
+        key: "setupTiled",
         value: function setupTiled() {
             this._setupSize();
             this._setupAnim();
         }
     }, {
-        key: '_setupSize',
+        key: "_setupSize",
         value: function _setupSize() {
             var width = this._width;
             var height = this._height;
@@ -1018,13 +1025,13 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             this._mapHeight = this.tiledData.height;
         }
     }, {
-        key: '_setupAnim',
+        key: "_setupAnim",
         value: function _setupAnim() {
             this._animFrame = {};
             this._animDuration = {};
         }
     }, {
-        key: '_createLayers',
+        key: "_createLayers",
         value: function _createLayers() {
             var id = 0;
             this._needsRepaint = true;
@@ -1075,16 +1082,10 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                         continue;
                     }
 
-                    var layer = new _TiledTileLayer2.default(zIndex, [], useSquareShader);
+                    var layer = new _TiledTileLayer2.default(zIndex, [], useSquareShader, 32);
                     layer.layerId = id; // @dryami: hack layer index
                     layer.spriteId = Sprite._counter++;
                     layer.alpha = layerData.opacity;
-                    if (!!layerData.properties && layerData.properties.transition) {
-                        layer.transition = layerData.properties.transition;
-                        layer.isShown = !TiledManager.checkLayerHidden(layerData);
-                        layer.transitionStep = layer.isShown ? layer.transition : 0;
-                        layer.minAlpha = Math.min(layer.alpha, layerData.properties.minimumOpacity || 0);
-                    }
                     this._layers.push(layer);
                     this.addChild(layer);
                     id++;
@@ -1107,52 +1108,71 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             this._createPriorityTiles();
         }
     }, {
-        key: '_createPriorityTiles',
+        key: "_createPriorityTiles",
         value: function _createPriorityTiles() {
-            var pluginParams = PluginManager.parameters("YED_Tiled");
             var size = parseInt(pluginParams["Priority Tiles Limit"]);
             var zIndex = parseInt(pluginParams["Z - Player"]);
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
+            if (size > 0) {
+                var _iteratorNormalCompletion2 = true;
+                var _didIteratorError2 = false;
+                var _iteratorError2 = undefined;
 
-            try {
-                for (var _iterator2 = Array(size).keys()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    var x = _step2.value;
-
-                    var sprite = new Sprite_TiledPriorityTile();
-                    sprite.z = sprite.zIndex = zIndex;
-                    sprite.layerId = -1;
-                    sprite.hide();
-                    this.addChild(sprite);
-                    this._priorityTiles.push(sprite);
-                }
-            } catch (err) {
-                _didIteratorError2 = true;
-                _iteratorError2 = err;
-            } finally {
                 try {
-                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                        _iterator2.return();
+                    for (var _iterator2 = Array(size).keys()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                        var x = _step2.value;
+
+                        var sprite = new Sprite_TiledPriorityTile();
+                        sprite.z = sprite.zIndex = zIndex;
+                        sprite.layerId = -1;
+                        sprite.hide();
+                        this.addChild(sprite);
+                        this._priorityTiles.push(sprite);
                     }
+                } catch (err) {
+                    _didIteratorError2 = true;
+                    _iteratorError2 = err;
                 } finally {
-                    if (_didIteratorError2) {
-                        throw _iteratorError2;
+                    try {
+                        if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                            _iterator2.return();
+                        }
+                    } finally {
+                        if (_didIteratorError2) {
+                            throw _iteratorError2;
+                        }
                     }
                 }
             }
         }
     }, {
-        key: '_hackRenderer',
+        key: "_hackRenderer",
         value: function _hackRenderer(renderer) {
             return renderer;
         }
     }, {
-        key: 'refreshTileset',
+        key: "refreshTileset",
         value: function refreshTileset() {
-            var bitmaps = this.bitmaps.map(function (x) {
+            var bitmaps = this.indexedBitmaps.map(function (x) {
+                if (Array.isArray(x)) {
+                    return x.map(function (y) {
+                        return y._baseTexture ? new PIXI.Texture(y._baseTexture) : y;
+                    });
+                }
                 return x._baseTexture ? new PIXI.Texture(x._baseTexture) : x;
             });
+
+            var _loop = function _loop(layer) {
+                var props = $gameMap.getLayerProperties(layer.layerId);
+                var tilesetBitmaps = [];
+                if (!props.tilesets) {
+                    return "continue";
+                }
+                props.tilesets.forEach(function (tilesetId) {
+                    tilesetBitmaps.push(bitmaps[tilesetId]);
+                });
+                layer.setBitmaps(tilesetBitmaps);
+            };
+
             var _iteratorNormalCompletion3 = true;
             var _didIteratorError3 = false;
             var _iteratorError3 = undefined;
@@ -1161,7 +1181,9 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 for (var _iterator3 = this._layers[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
                     var layer = _step3.value;
 
-                    layer.setBitmaps(bitmaps);
+                    var _ret = _loop(layer);
+
+                    if (_ret === "continue") continue;
                 }
             } catch (err) {
                 _didIteratorError3 = true;
@@ -1179,13 +1201,13 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: 'update',
+        key: "update",
         value: function update() {
-            _get(TiledTilemap.prototype.__proto__ || Object.getPrototypeOf(TiledTilemap.prototype), 'update', this).call(this);
+            _get(TiledTilemap.prototype.__proto__ || Object.getPrototypeOf(TiledTilemap.prototype), "update", this).call(this);
             this._updateAnim();
         }
     }, {
-        key: '_updateAnim',
+        key: "_updateAnim",
         value: function _updateAnim() {
             var needRefresh = false;
             for (var key in this._animDuration) {
@@ -1201,7 +1223,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_updateLayerPositions',
+        key: "_updateLayerPositions",
         value: function _updateLayerPositions(startX, startY) {
             var ox = 0;
             var oy = 0;
@@ -1272,7 +1294,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_paintAllTiles',
+        key: "_paintAllTiles",
         value: function _paintAllTiles(startX, startY) {
             this._priorityTilesCount = 0;
             var _iteratorNormalCompletion6 = true;
@@ -1340,7 +1362,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_paintTiles',
+        key: "_paintTiles",
         value: function _paintTiles(layer, startX, startY) {
             var layerData = this.tiledData.layers[layer.layerId];
 
@@ -1353,7 +1375,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_paintObjectLayers',
+        key: "_paintObjectLayers",
         value: function _paintObjectLayers(layerId, startX, startY) {
             var layerData = this.tiledData.layers[layerId];
             var objects = layerData.objects || [];
@@ -1373,14 +1395,22 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                         continue;
                     }
                     var tileId = obj.gid;
-                    var textureId = this._getTextureId(tileId);
-                    var dx = obj.x - startX * this._tileWidth;
-                    var dy = obj.y - startY * this._tileHeight - obj.height;
+                    var realTileId = tileId & 0x1FFFFFFF;
+                    var textureId = this._getTextureId(realTileId);
+                    var offsets = $gameMap.offsets();
+                    var dx = obj.x - (startX + offsets.x) * this._tileWidth;
+                    var dy = obj.y - (startY + offsets.y) * this._tileHeight - obj.height;
                     var positionHeight = 0;
-                    if (obj.properties && obj.properties.positionHeight) {
-                        positionHeight = obj.properties.positionHeight;
+                    var zIndex = false;
+                    if (obj.properties) {
+                        if (obj.properties.positionHeight) {
+                            positionHeight = obj.properties.positionHeight;
+                        }
+                        if (obj.properties.hasOwnProperty('zIndex')) {
+                            zIndex = obj.properties.zIndex;
+                        }
                     }
-                    this._paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
+                    this._paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight, zIndex);
                 }
             } catch (err) {
                 _didIteratorError8 = true;
@@ -1398,7 +1428,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_paintTilesLayer',
+        key: "_paintTilesLayer",
         value: function _paintTilesLayer(layer, startX, startY) {
             var tileCols = Math.ceil(this._width / this._tileWidth) + 1;
             var tileRows = Math.ceil(this._height / this._tileHeight) + 1;
@@ -1451,7 +1481,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_paintTile',
+        key: "_paintTile",
         value: function _paintTile(layer, startX, startY, x, y) {
             var mx = x + startX;
             var my = y + startY;
@@ -1465,6 +1495,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var tileId = TiledManager.extractTileId(this.tiledData.layers[layer.layerId], tilePosition);
             var rectLayer = layer.children[0];
             var textureId = 0;
+            var props = $gameMap.getLayerProperties(layer.layerId);
 
             if (!tileId) {
                 return;
@@ -1476,7 +1507,6 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
 
             textureId = this._getTextureId(tileId);
-
             var tileset = this.tiledData.tilesets[textureId];
             var dx = x * this._tileWidth;
             var dy = y * this._tileHeight;
@@ -1499,18 +1529,26 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 return;
             }
 
+            if (props.tilesets && props.tilesets.indexOf(textureId) > -1) {
+                textureId = props.tilesets.indexOf(textureId);
+            }
+
             rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
         }
     }, {
-        key: '_paintPriorityTile',
+        key: "_paintPriorityTile",
         value: function _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy) {
             var positionHeight = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 0;
+            var zIndex = arguments.length > 8 && arguments[8] !== undefined ? arguments[8] : false;
 
             var tileset = this.tiledData.tilesets[textureId];
-            var w = tileset.tilewidth;
-            var h = tileset.tileheight;
+            var tileOrientation = tileId >> 24 & 0xe0;
+            var realTileId = tileId & 0x1FFFFFFF;
+            var tile = tileset.tiles ? tileset.tiles[realTileId - tileset.firstgid] || {} : {};
+            var w = tile.imagewidth || tileset.tilewidth;
+            var h = tile.imageheight || tileset.tileheight;
             var tileCols = tileset.columns;
-            var rId = this._getAnimTileId(textureId, tileId - tileset.firstgid);
+            var rId = this._getAnimTileId(textureId, realTileId - tileset.firstgid);
             var ux = rId % tileCols * w;
             var uy = Math.floor(rId / tileCols) * h;
             var sprite = this._priorityTiles[this._priorityTilesCount];
@@ -1519,6 +1557,8 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var offsetY = layerData ? layerData.offsety || 0 : 0;
             var ox = 0;
             var oy = 0;
+            var flipH = tileOrientation === 0x20 || (tileOrientation & 0x80) > 0;
+            var flipV = tileOrientation === 0x20 || (tileOrientation & 0x40) > 0;
             if (this.roundPixels) {
                 ox = Math.floor(this.origin.x);
                 oy = Math.floor(this.origin.y);
@@ -1527,29 +1567,49 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 oy = this.origin.y;
             }
 
+            var size = parseInt(pluginParams["Priority Tiles Limit"]);
             if (this._priorityTilesCount >= this._priorityTiles.length) {
-                return;
+                if (size > 0) {
+                    return;
+                } else {
+                    sprite = new Sprite_TiledPriorityTile();
+                    sprite.z = sprite.zIndex = parseInt(pluginParams["Z - Player"]);
+                    this.addChild(sprite);
+                    this._priorityTiles.push(sprite);
+                }
             }
 
             sprite.layerId = layerId;
             sprite.anchor.x = 0.5;
-            sprite.anchor.y = 1.0;
+            sprite.anchor.y = flipV ? 0.0 : 1.0;
             sprite.origX = dx;
             sprite.origY = dy;
+            sprite.scale.x = flipH ? -1 : 1;
+            sprite.scale.y = flipV ? -1 : 1;
             sprite.x = sprite.origX + startX * this._tileWidth - ox + offsetX + w / 2;
             sprite.y = sprite.origY + startY * this._tileHeight - oy + offsetY + h;
-            sprite.bitmap = this.bitmaps[textureId];
-            sprite.setFrame(ux, uy, w, h);
+
+            var realTextureId = this._getTextureId(realTileId, true);
+            if (Array.isArray(this.indexedBitmaps[realTextureId])) {
+                var tile = tileset.tiles[realTileId - tileset.firstgid];
+                sprite.bitmap = this.indexedBitmaps[realTextureId][realTileId - tileset.firstgid];
+                sprite.setFrame(0, 0, tile.imagewidth, tile.imageheight);
+            } else {
+                sprite.bitmap = this.indexedBitmaps[realTextureId];
+                sprite.setFrame(ux, uy, w, h);
+            }
             sprite.priority = this._getPriority(layerId);
-            sprite.z = sprite.zIndex = this._getZIndex(layerId);
+            sprite.z = sprite.zIndex = zIndex !== false ? zIndex : this._getZIndex(layerId);
             sprite.positionHeight = positionHeight;
             sprite.show();
 
             this._priorityTilesCount += 1;
         }
     }, {
-        key: '_getTextureId',
+        key: "_getTextureId",
         value: function _getTextureId(tileId) {
+            var ignore = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
             var textureId = 0;
             var _iteratorNormalCompletion11 = true;
             var _didIteratorError11 = false;
@@ -1559,6 +1619,9 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 for (var _iterator11 = this.tiledData.tilesets[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
                     var tileset = _step11.value;
 
+                    if (ignore && tileset.properties && tileset.properties.ignoreLoading) {
+                        continue;
+                    }
                     if (tileId < tileset.firstgid || tileId >= tileset.firstgid + tileset.tilecount) {
                         textureId++;
                         continue;
@@ -1583,7 +1646,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             return textureId;
         }
     }, {
-        key: '_getAnimTileId',
+        key: "_getAnimTileId",
         value: function _getAnimTileId(textureId, tileId) {
             var tilesData = this.tiledData.tilesets[textureId].tiles;
             if (!tilesData) {
@@ -1608,7 +1671,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             return animation[frame].tileid;
         }
     }, {
-        key: '_getPriority',
+        key: "_getPriority",
         value: function _getPriority(layerId) {
             var layerData = this.tiledData.layers[layerId];
             if (!layerData.properties) {
@@ -1620,15 +1683,14 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             return parseInt(layerData.properties.priority);
         }
     }, {
-        key: '_isPriorityTile',
+        key: "_isPriorityTile",
         value: function _isPriorityTile(layerId) {
-            var pluginParams = PluginManager.parameters("YED_Tiled");
             var playerZIndex = parseInt(pluginParams["Z - Player"]);
             var zIndex = this._getZIndex(layerId);
             return this._getPriority(layerId) > 0 && zIndex === playerZIndex;
         }
     }, {
-        key: '_getZIndex',
+        key: "_getZIndex",
         value: function _getZIndex(layerId) {
             var layerData = this.tiledData.layers[layerId];
             if (!layerData) {
@@ -1639,8 +1701,15 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
             return parseInt(layerData.properties.zIndex);
         }
+
+        /**
+         * Hides a layer based on the level the player is on
+         * 
+         * This method has been deprecated in favor of the more general method.
+         */
+
     }, {
-        key: 'hideOnLevel',
+        key: "hideOnLevel",
         value: function hideOnLevel(level) {
             var layerIds = [];
             var _iteratorNormalCompletion12 = true;
@@ -1697,9 +1766,20 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 }
             });
         }
+
+        /**
+         * Hides layers on certain special conditions
+         * 
+         * This method will analyze each layer, then checks them with certain conditions. If
+         * they meet one condition, they will be hidden.
+         * 
+         * It also handles fading in and out layers.
+         */
+
     }, {
-        key: 'hideOnSpecial',
+        key: "hideOnSpecial",
         value: function hideOnSpecial() {
+            /* Iterates through each layer */
             var _iteratorNormalCompletion13 = true;
             var _didIteratorError13 = false;
             var _iteratorError13 = undefined;
@@ -1717,20 +1797,21 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                            hide this layer. */
                         if (TiledManager.hasHideProperties(layerData)) {
                             /* If the layer isn't supposed to be hidden, add the layer to the container */
+                            var props = $gameMap.getLayerProperties(layer.layerId);
                             if (!hideLayer) {
-                                if (layer.transition) {
+                                if (props.transition) {
                                     /* If this layer has a transition, we'll need to tell the layer that
                                        it's supposed to be showing. */
-                                    layer.isShown = true;
+                                    props.isShown = true;
                                 }
                                 this.addChild(layer);
                                 continue;
                             }
                             /* Since the layer is supposed to be hidden, let's first let it transition if
                                it has a transition fadeout. */
-                            if (layer.transition) {
-                                layer.isShown = false;
-                                if (layer.minAlpha > 0 || layer.transitionStep > 0) {
+                            if (props.transition) {
+                                props.isShown = false;
+                                if (props.minAlpha > 0 || props.transitionPhase > 0) {
                                     this.addChild(layer);
                                     continue;
                                 }
@@ -1756,9 +1837,9 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             }
         }
     }, {
-        key: '_compareChildOrder',
+        key: "_compareChildOrder",
         value: function _compareChildOrder(a, b) {
-            if ((this._layers.indexOf(a) > -1 || this._parallaxlayers.indexOf(a) > -1) && (this._layers.indexOf(b) > -1 || this._parallaxlayers.indexOf(b) > -1)) {
+            if ((this._layers.indexOf(a) > -1 || this._imageLayers.indexOf(a) > -1) && (this._layers.indexOf(b) > -1 || this._imageLayers.indexOf(b) > -1)) {
                 if ((a.z || 0) !== (b.z || 0)) {
                     return (a.z || 0) - (b.z || 0);
                 } else if ((a.priority || 0) !== (b.priority || 0)) {
@@ -1782,7 +1863,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
         /* Parallax map stuff */
 
     }, {
-        key: '_createImageLayer',
+        key: "_createImageLayer",
         value: function _createImageLayer(layerData, id) {
             var zIndex = 0;
             var repeatX = false;
@@ -1798,6 +1879,8 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             var viewportHeight = 0;
             var viewportDeltaX = 0;
             var viewportDeltaY = 0;
+
+            var props = $gameMap.getLayerProperties(id);
 
             if (!!layerData.properties) {
                 if (!!layerData.properties.ignoreLoading) {
@@ -1858,14 +1941,11 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             layer.layerId = id;
             layer.spriteId = Sprite._counter++;
             layer.alpha = layerData.opacity;
-            if (TiledManager.hasHideProperties(layerData) && !!layerData.properties.transition) {
-                layer._transition = layerData.properties.transition;
-                layer._baseAlpha = layerData.opacity;
-                layer._minAlpha = Math.min(layer._baseAlpha, layerData.properties.minimumOpacity || 0);
-                layer._isShown = !TiledManager.checkLayerHidden(layerData);
-                layer._transitionPhase = layer._isShown ? layer._transition : 0;
-            }
             layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+            layer.bitmap.addLoadListener(function () {
+                props.imageWidth = layer.bitmap.width;
+                props.imageHeight = layer.bitmap.height;
+            });
             layer.baseX = layerData.x + (layerData.offsetx || 0);
             layer.baseY = layerData.y + (layerData.offsety || 0);
             layer.z = layer.zIndex = zIndex;
@@ -1890,23 +1970,22 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                 layer.mask = layerMask;
                 layer.hasViewport = true;
             }
-            this._parallaxlayers.push(layer);
+            this._imageLayers.push(layer);
             this.addChild(layer);
         }
     }, {
-        key: 'updateParallax',
-        value: function updateParallax() {
+        key: "updateImageLayer",
+        value: function updateImageLayer() {
             var _this2 = this;
 
-            this._parallaxlayers.forEach(function (layer) {
+            this._imageLayers.forEach(function (layer) {
                 var layerData = _this2.tiledData.layers[layer.layerId];
+                var props = $gameMap.getLayerProperties(layer.layerId);
                 if (TiledManager.hasHideProperties(layerData)) {
                     var visibility = TiledManager.checkLayerHidden(layerData);
-                    if (!!layerData.properties.transition) {
-                        layer._isShown = !visibility;
-                        layer._transitionPhase = Math.max(0, Math.min(layer._transition, layer._transitionPhase + (layer._isShown ? 1 : -1)));
-                        layer.alpha = (layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition) + layer._minAlpha;
-                        visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
+                    if (props.transition) {
+                        layer.alpha = (props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition) + props.minAlpha;
+                        visibility = props.minAlpha > 0 || props.transitionPhase > 0;
                     }
                     layer.visible = visibility;
                 }
@@ -1918,45 +1997,25 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
                 };
                 if (!!layer.origin) {
+                    var autoX = props.autoXFunction ? props.autoXFunction(props.autoX, props.autoY || 0) : 0;
+                    var autoY = props.autoYFunction ? props.autoYFunction(props.autoX || 0, props.autoY) : 0;
                     if (!layer.repeatX) {
-                        layer.origin.x = layer.baseX - offsets.x + layer.autoX;
+                        layer.origin.x = layer.baseX - offsets.x + autoX;
                         layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                         layer.width = layer.bitmap.width;
                     } else {
-                        layer.origin.x = layer.baseX - offsets.x + layer.autoX + display.x * layer.deltaX;
+                        layer.origin.x = layer.baseX - offsets.x + autoX + display.x * layer.deltaX;
                         layer.x = 0;
                         layer.width = Graphics.width;
                     }
                     if (!layer.repeatY) {
-                        layer.origin.y = layer.baseY - offsets.y + layer.autoY;
+                        layer.origin.y = layer.baseY - offsets.y + autoY;
                         layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                         layer.height = layer.bitmap.height;
                     } else {
-                        layer.origin.y = layer.baseY - offsets.y + layer.autoY + display.y * layer.deltaY;
+                        layer.origin.y = layer.baseY - offsets.y + autoY + display.y * layer.deltaY;
                         layer.y = 0;
                         layer.height = Graphics.height;
-                    }
-                    layer.autoX += layer.stepAutoX;
-                    layer.autoY += layer.stepAutoY;
-                    if (layer.bitmap.width > 0) {
-                        while (layer.autoX > layer.bitmap.width) {
-                            layer.autoX -= layer.bitmap.width;
-                        }
-                        while (layer.autoX < 0) {
-                            layer.autoX += layer.bitmap.width;
-                        }
-                    } else {
-                        layer.autoX = 0;
-                    }
-                    if (layer.bitmap.height > 0) {
-                        while (layer.autoY > layer.bitmap.height) {
-                            layer.autoY -= layer.bitmap.height;
-                        }
-                        while (layer.autoY < 0) {
-                            layer.autoY += layer.bitmap.height;
-                        }
-                    } else {
-                        layer.autoY = 0;
                     }
                 } else {
                     layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
@@ -1972,7 +2031,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
             });
         }
     }, {
-        key: 'tiledData',
+        key: "tiledData",
         get: function get() {
             return this._tiledData;
         },
@@ -2120,6 +2179,35 @@ TiledManager.addFlag('heal');
 TiledManager.createVehicle('boat', true);
 TiledManager.createVehicle('ship', true);
 TiledManager.createVehicle('airship', true);
+
+/* INITIALIZES AUTO FUNCTIONS */
+
+TiledManager.setAutoFunction('linear', {
+    x: function x(_x, y) {
+        return _x;
+    },
+    y: function y(x, _y) {
+        return _y;
+    }
+});
+
+TiledManager.setAutoFunction('sine', {
+    x: function x(_x2, y) {
+        return Math.sin(_x2 * Math.PI / 180);
+    },
+    y: function y(x, _y2) {
+        return Math.sin(_y2 * Math.PI / 180);
+    }
+});
+
+TiledManager.setAutoFunction('cosine', {
+    x: function x(_x3, y) {
+        return Math.cos(_x3 * Math.PI / 180);
+    },
+    y: function y(x, _y3) {
+        return Math.cos(_y3 * Math.PI / 180);
+    }
+});
 
 /* INITIALIZES PLUGIN COMMANDS */
 
@@ -2396,6 +2484,8 @@ var _tileFlagIndex = 1;
 var _vehicles = {};
 var _vehiclesByIndex = [];
 
+var _autoFunctions = {};
+
 var _pluginCommands = {};
 
 var _fullVehicleData = {
@@ -2512,7 +2602,7 @@ TiledManager.processTiledData = function () {
     for (var idx = 0; idx < parentLayer.layers.length; idx++) {
         var layer = parentLayer.layers[idx];
         if (layer.type === 'group') {
-            TiledManager.expandLayerGroups(layer);
+            TiledManager.processTiledData(layer);
             Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers));
             idx += layer.layers.length - 1;
             continue;
@@ -2665,6 +2755,16 @@ TiledManager.getParameterVehicles = function () {
     }
 };
 
+TiledManager.setAutoFunction = function (identifier) {
+    var functions = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    _autoFunctions[identifier] = functions;
+};
+
+TiledManager.getAutoFunction = function (identifier) {
+    return _autoFunctions[identifier] || false;
+};
+
 /* PLUGIN COMMANDS */
 
 TiledManager.addPluginCommand = function (command, func) {
@@ -2701,21 +2801,13 @@ window.Sprite_TiledPriorityTile = Sprite_TiledPriorityTile;
 Sprite_TiledPriorityTile.prototype.updateVisibility = function () {
     var visibility = false;
     if (this.layerId > -1) {
-        var layer = $gameMap.tiledData.layers[this.layerId];
-        if (layer.properties.transition) {
-            if (!this._transition) {
-                this._transition = layer.properties.transition;
-                this._baseAlpha = layer.opacity;
-                this._minAlpha = Math.min(this._baseAlpha, layer.properties.minimumOpacity || 0);
-                this._isShown = !TiledManager.checkLayerHidden(layer);
-                this._transitionPhase = this._isShown ? this._transition : 0;
-            } else {
-                this._isShown = !TiledManager.checkLayerHidden(layer);
-                this._transitionPhase = Math.max(0, Math.min(this._transition, this._transitionPhase + (this._isShown ? 1 : -1)));
-            }
-            visibility = this._minAlpha > 0 || this._transitionPhase > 0;
-            this.opacity = 255 * ((this._baseAlpha - this._minAlpha) * (this._transitionPhase / this._transition) + this._minAlpha);
+        visibility = true;
+        var props = $gameMap.getLayerProperties(this.layerId);
+        if (props.transition) {
+            visibility = props.minAlpha > 0 || props.transitionPhase > 0;
+            this.opacity = 255 * ((props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition) + props.minAlpha);
         } else {
+            var layer = $gameMap.tiledData.layers[this.layerId];
             visibility = !TiledManager.checkLayerHidden(layer);
         }
     }
@@ -2830,11 +2922,11 @@ var TiledTileLayer = function (_PIXI$tilemap$Composi) {
                 this.tiledTileShader = new _TiledTileShader2.default(gl, renderer.plugins.tilemap.maxTextures, this.useSquare);
             }
             var alpha = this.alpha;
-            if (this.transition) {
-                this.transitionStep = Math.max(0, Math.min(this.transition, this.transitionStep + (this.isShown ? 1 : -1)));
-                alpha -= this.minAlpha;
-                alpha *= this.transitionStep / this.transition;
-                alpha += this.minAlpha;
+            var props = $gameMap.getLayerProperties(this.layerId);
+            if (props.transition) {
+                alpha -= props.minAlpha;
+                alpha *= props.transitionPhase / props.transition;
+                alpha += props.minAlpha;
             }
             //var shader = renderer.plugins.tilemap.getShader(this.useSquare);
             var shader = this.tiledTileShader;
@@ -2997,6 +3089,7 @@ Game_Map.prototype.setup = function (mapId) {
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
     this._waypoints = {};
+    this._layerProperties = [];
     this._autoSize = false;
     this._autoSizeBorder = 0;
     this._offsets = { x: 0, y: 0 };
@@ -3038,6 +3131,7 @@ Game_Map.prototype.isTiledMap = function () {
 Game_Map.prototype._setupTiled = function () {
     this._initializeMapProperties();
     this._initializeInfiniteMap();
+    this._setLayerProperties();
     this._initializeMapLevel(0);
 
     this._setupCollision();
@@ -3225,6 +3319,103 @@ Game_Map.prototype._cropInfiniteMap = function (layer, offset, limit) {
     return o;
 };
 
+Game_Map.prototype._setLayerProperties = function () {
+    var autoFunctions = {};
+    for (var idx = 0; idx < this.tiledData.layers.length; idx++) {
+        var layer = this.tiledData.layers[idx];
+        var layerProperties = Object.assign({}, layer.properties, { layerId: idx });
+        if (layerProperties.transition) {
+            layerProperties.baseAlpha = layer.opacity;
+            layerProperties.minAlpha = Math.min(layerProperties.baseAlpha, layer.properties.minimumOpacity || 0);
+            layerProperties.isShown = !TiledManager.checkLayerHidden(layer);
+            layerProperties.transitionPhase = layerProperties.isShown ? layerProperties.transition : 0;
+        }
+        if (layerProperties.autoX) {
+            layerProperties.autoSpeedX = layerProperties.autoX;
+            layerProperties.autoX = 0;
+            layerProperties.imageWidth = layerProperties.imageWidth || 0;
+            var funcX = 'linear';
+            if (layerProperties.autoFunctionX) {
+                funcX = layerProperties.autoFunctionX;
+            } else if (layerProperties.autoFunction) {
+                funcX = layerProperties.autoFunction;
+            }
+            var tFuncX = TiledManager.getAutoFunction(funcX);
+            if (tFuncX) {
+                layerProperties.autoXFunction = tFuncX.x || tFuncX.both;
+            } else {
+                if (!autoFunctions[funcX]) {
+                    autoFunctions[funcX] = new Function('x', 'y', funcX);
+                }
+                layerProperties.autoXFunction = autoFunctions[funcX];
+            }
+        }
+        if (layerProperties.autoY) {
+            layerProperties.autoSpeedY = layerProperties.autoY;
+            layerProperties.autoY = 0;
+            layerProperties.imageHeight = layerProperties.imageHeight || 0;
+            var funcY = 'linear';
+            if (layerProperties.autoFunctionY) {
+                funcY = layerProperties.autoFunctionY;
+            } else if (layerProperties.autoFunction) {
+                funcY = layerProperties.autoFunction;
+            }
+            var tFuncY = TiledManager.getAutoFunction(funcY);
+            if (tFuncY) {
+                layerProperties.autoYFunction = tFuncY.y || tFuncY.both;
+            } else {
+                if (!autoFunctions[funcY]) {
+                    autoFunctions[funcY] = new Function('x', 'y', funcY);
+                }
+                layerProperties.autoYFunction = autoFunctions[funcY];
+            }
+        }
+        this._getLayerTilesets(layer, layerProperties);
+        this._layerProperties.push(layerProperties);
+    }
+};
+
+Game_Map.prototype._getLayerTilesets = function (layer, props) {
+    if (layer.type !== 'tilelayer') {
+        return;
+    }
+    var width = this.width();
+    var height = this.height();
+    var size = width * height;
+    props.tilesets = [];
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+        for (var _iterator = Array(size).keys()[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+            var i = _step.value;
+
+            var tileId = TiledManager.extractTileId(layer, i);
+            if (!!tileId) {
+                var tilesetId = this._getTilesetId(tileId);
+                if (tilesetId === -1 || props.tilesets.indexOf(tilesetId) > -1) {
+                    continue;
+                }
+                props.tilesets.push(tilesetId);
+            }
+        }
+    } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion && _iterator.return) {
+                _iterator.return();
+            }
+        } finally {
+            if (_didIteratorError) {
+                throw _iteratorError;
+            }
+        }
+    }
+};
+
 Game_Map.prototype._initializeMapLevel = function (id) {
     if (!!this._collisionMap[id]) {
         return;
@@ -3279,27 +3470,27 @@ Game_Map.prototype._initializeMapLevelData = function () {
         }
         this['_' + dataType][id][layerId] = [];
         var typeData = this['_' + dataType][id][layerId];
-        var _iteratorNormalCompletion = true;
-        var _didIteratorError = false;
-        var _iteratorError = undefined;
+        var _iteratorNormalCompletion2 = true;
+        var _didIteratorError2 = false;
+        var _iteratorError2 = undefined;
 
         try {
-            for (var _iterator = Array(size).keys()[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                var x = _step.value;
+            for (var _iterator2 = Array(size).keys()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                var x = _step2.value;
 
                 typeData.push(defaultValue);
             }
         } catch (err) {
-            _didIteratorError = true;
-            _iteratorError = err;
+            _didIteratorError2 = true;
+            _iteratorError2 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion && _iterator.return) {
-                    _iterator.return();
+                if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                    _iterator2.return();
                 }
             } finally {
-                if (_didIteratorError) {
-                    throw _iteratorError;
+                if (_didIteratorError2) {
+                    throw _iteratorError2;
                 }
             }
         }
@@ -3343,13 +3534,13 @@ Game_Map.prototype._setupCollisionFull = function () {
             this._initializeMapLevelData(level, layerId, ['collisionMap']);
         }
 
-        var _iteratorNormalCompletion2 = true;
-        var _didIteratorError2 = false;
-        var _iteratorError2 = undefined;
+        var _iteratorNormalCompletion3 = true;
+        var _didIteratorError3 = false;
+        var _iteratorError3 = undefined;
 
         try {
-            for (var _iterator2 = Array(size).keys()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                var x = _step2.value;
+            for (var _iterator3 = Array(size).keys()[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                var x = _step3.value;
 
                 var realX = x;
                 var ids = [];
@@ -3404,43 +3595,43 @@ Game_Map.prototype._setupCollisionFull = function () {
                             }
                             break;
                     }
-                    var _iteratorNormalCompletion3 = true;
-                    var _didIteratorError3 = false;
-                    var _iteratorError3 = undefined;
+                    var _iteratorNormalCompletion4 = true;
+                    var _didIteratorError4 = false;
+                    var _iteratorError4 = undefined;
 
                     try {
-                        for (var _iterator3 = ids[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                            var id = _step3.value;
+                        for (var _iterator4 = ids[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                            var id = _step4.value;
 
                             this._collisionMap[level][layerId][id] = 1;
                         }
                     } catch (err) {
-                        _didIteratorError3 = true;
-                        _iteratorError3 = err;
+                        _didIteratorError4 = true;
+                        _iteratorError4 = err;
                     } finally {
                         try {
-                            if (!_iteratorNormalCompletion3 && _iterator3.return) {
-                                _iterator3.return();
+                            if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                                _iterator4.return();
                             }
                         } finally {
-                            if (_didIteratorError3) {
-                                throw _iteratorError3;
+                            if (_didIteratorError4) {
+                                throw _iteratorError4;
                             }
                         }
                     }
                 }
             }
         } catch (err) {
-            _didIteratorError2 = true;
-            _iteratorError2 = err;
+            _didIteratorError3 = true;
+            _iteratorError3 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                    _iterator2.return();
+                if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                    _iterator3.return();
                 }
             } finally {
-                if (_didIteratorError2) {
-                    throw _iteratorError2;
+                if (_didIteratorError3) {
+                    throw _iteratorError3;
                 }
             }
         }
@@ -3504,13 +3695,13 @@ Game_Map.prototype._setupCollisionArrow = function () {
         }
 
         var arrowCollisionMap = this._arrowCollisionMap[level][layerId];
-        var _iteratorNormalCompletion4 = true;
-        var _didIteratorError4 = false;
-        var _iteratorError4 = undefined;
+        var _iteratorNormalCompletion5 = true;
+        var _didIteratorError5 = false;
+        var _iteratorError5 = undefined;
 
         try {
-            for (var _iterator4 = Array(size).keys()[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-                var x = _step4.value;
+            for (var _iterator5 = Array(size).keys()[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+                var x = _step5.value;
 
                 var realX = x;
                 if (this.isHalfTile()) {
@@ -3550,16 +3741,16 @@ Game_Map.prototype._setupCollisionArrow = function () {
                 }
             }
         } catch (err) {
-            _didIteratorError4 = true;
-            _iteratorError4 = err;
+            _didIteratorError5 = true;
+            _iteratorError5 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion4 && _iterator4.return) {
-                    _iterator4.return();
+                if (!_iteratorNormalCompletion5 && _iterator5.return) {
+                    _iterator5.return();
                 }
             } finally {
-                if (_didIteratorError4) {
-                    throw _iteratorError4;
+                if (_didIteratorError5) {
+                    throw _iteratorError5;
                 }
             }
         }
@@ -3596,13 +3787,13 @@ Game_Map.prototype._setupRegion = function () {
 
         var regionMap = this._regions[level][layerId];
 
-        var _iteratorNormalCompletion5 = true;
-        var _didIteratorError5 = false;
-        var _iteratorError5 = undefined;
+        var _iteratorNormalCompletion6 = true;
+        var _didIteratorError6 = false;
+        var _iteratorError6 = undefined;
 
         try {
-            for (var _iterator5 = Array(size).keys()[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-                var x = _step5.value;
+            for (var _iterator6 = Array(size).keys()[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+                var x = _step6.value;
 
                 var realX = x;
                 if (this.isHalfTile()) {
@@ -3635,16 +3826,16 @@ Game_Map.prototype._setupRegion = function () {
                 }
             }
         } catch (err) {
-            _didIteratorError5 = true;
-            _iteratorError5 = err;
+            _didIteratorError6 = true;
+            _iteratorError6 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion5 && _iterator5.return) {
-                    _iterator5.return();
+                if (!_iteratorNormalCompletion6 && _iterator6.return) {
+                    _iterator6.return();
                 }
             } finally {
-                if (_didIteratorError5) {
-                    throw _iteratorError5;
+                if (_didIteratorError6) {
+                    throw _iteratorError6;
                 }
             }
         }
@@ -3680,13 +3871,13 @@ Game_Map.prototype._setupMapLevelChange = function () {
 
         var levelChangeMap = this._mapLevelChange[level][layerId];
 
-        var _iteratorNormalCompletion6 = true;
-        var _didIteratorError6 = false;
-        var _iteratorError6 = undefined;
+        var _iteratorNormalCompletion7 = true;
+        var _didIteratorError7 = false;
+        var _iteratorError7 = undefined;
 
         try {
-            for (var _iterator6 = Array(size).keys()[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-                var x = _step6.value;
+            for (var _iterator7 = Array(size).keys()[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+                var x = _step7.value;
 
                 var realX = x;
                 var toLevel = parseInt(layerData.properties.toLevel);
@@ -3704,16 +3895,16 @@ Game_Map.prototype._setupMapLevelChange = function () {
                 }
             }
         } catch (err) {
-            _didIteratorError6 = true;
-            _iteratorError6 = err;
+            _didIteratorError7 = true;
+            _iteratorError7 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion6 && _iterator6.return) {
-                    _iterator6.return();
+                if (!_iteratorNormalCompletion7 && _iterator7.return) {
+                    _iterator7.return();
                 }
             } finally {
-                if (_didIteratorError6) {
-                    throw _iteratorError6;
+                if (_didIteratorError7) {
+                    throw _iteratorError7;
                 }
             }
         }
@@ -3749,13 +3940,13 @@ Game_Map.prototype._setupPositionHeightChange = function () {
 
         var positionHeightChangeMap = this._positionHeightChange[level][layerId];
 
-        var _iteratorNormalCompletion7 = true;
-        var _didIteratorError7 = false;
-        var _iteratorError7 = undefined;
+        var _iteratorNormalCompletion8 = true;
+        var _didIteratorError8 = false;
+        var _iteratorError8 = undefined;
 
         try {
-            for (var _iterator7 = Array(size).keys()[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-                var x = _step7.value;
+            for (var _iterator8 = Array(size).keys()[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+                var x = _step8.value;
 
                 var realX = x;
                 var toLevel = parseInt(layerData.properties.floorHeight);
@@ -3773,16 +3964,16 @@ Game_Map.prototype._setupPositionHeightChange = function () {
                 }
             }
         } catch (err) {
-            _didIteratorError7 = true;
-            _iteratorError7 = err;
+            _didIteratorError8 = true;
+            _iteratorError8 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion7 && _iterator7.return) {
-                    _iterator7.return();
+                if (!_iteratorNormalCompletion8 && _iterator8.return) {
+                    _iterator8.return();
                 }
             } finally {
-                if (_didIteratorError7) {
-                    throw _iteratorError7;
+                if (_didIteratorError8) {
+                    throw _iteratorError8;
                 }
             }
         }
@@ -3819,13 +4010,13 @@ Game_Map.prototype._setupTileFlags = function () {
 
         var tileFlagMap = this._tileFlags[level][layerId];
 
-        var _iteratorNormalCompletion8 = true;
-        var _didIteratorError8 = false;
-        var _iteratorError8 = undefined;
+        var _iteratorNormalCompletion9 = true;
+        var _didIteratorError9 = false;
+        var _iteratorError9 = undefined;
 
         try {
-            for (var _iterator8 = Array(size).keys()[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
-                var x = _step8.value;
+            for (var _iterator9 = Array(size).keys()[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
+                var x = _step9.value;
 
                 var realX = x;
                 if (this.isHalfTile()) {
@@ -3851,16 +4042,16 @@ Game_Map.prototype._setupTileFlags = function () {
                 }
             }
         } catch (err) {
-            _didIteratorError8 = true;
-            _iteratorError8 = err;
+            _didIteratorError9 = true;
+            _iteratorError9 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion8 && _iterator8.return) {
-                    _iterator8.return();
+                if (!_iteratorNormalCompletion9 && _iterator9.return) {
+                    _iterator9.return();
                 }
             } finally {
-                if (_didIteratorError8) {
-                    throw _iteratorError8;
+                if (_didIteratorError9) {
+                    throw _iteratorError9;
                 }
             }
         }
@@ -3899,25 +4090,25 @@ Game_Map.prototype._combineFlags = function (source, target) {
 };
 
 Game_Map.prototype._setupTiledEvents = function () {
-    var _iteratorNormalCompletion9 = true;
-    var _didIteratorError9 = false;
-    var _iteratorError9 = undefined;
+    var _iteratorNormalCompletion10 = true;
+    var _didIteratorError10 = false;
+    var _iteratorError10 = undefined;
 
     try {
-        for (var _iterator9 = this.tiledData.layers[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
-            var layerData = _step9.value;
+        for (var _iterator10 = this.tiledData.layers[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+            var layerData = _step10.value;
 
             if (layerData.type !== "objectgroup") {
                 continue;
             }
 
-            var _iteratorNormalCompletion10 = true;
-            var _didIteratorError10 = false;
-            var _iteratorError10 = undefined;
+            var _iteratorNormalCompletion11 = true;
+            var _didIteratorError11 = false;
+            var _iteratorError11 = undefined;
 
             try {
-                for (var _iterator10 = layerData.objects[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
-                    var object = _step10.value;
+                for (var _iterator11 = layerData.objects[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
+                    var object = _step11.value;
 
                     if (!object.properties) {
                         continue;
@@ -3969,31 +4160,31 @@ Game_Map.prototype._setupTiledEvents = function () {
                     event._tiledProperties = object.properties;
                 }
             } catch (err) {
-                _didIteratorError10 = true;
-                _iteratorError10 = err;
+                _didIteratorError11 = true;
+                _iteratorError11 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion10 && _iterator10.return) {
-                        _iterator10.return();
+                    if (!_iteratorNormalCompletion11 && _iterator11.return) {
+                        _iterator11.return();
                     }
                 } finally {
-                    if (_didIteratorError10) {
-                        throw _iteratorError10;
+                    if (_didIteratorError11) {
+                        throw _iteratorError11;
                     }
                 }
             }
         }
     } catch (err) {
-        _didIteratorError9 = true;
-        _iteratorError9 = err;
+        _didIteratorError10 = true;
+        _iteratorError10 = err;
     } finally {
         try {
-            if (!_iteratorNormalCompletion9 && _iterator9.return) {
-                _iterator9.return();
+            if (!_iteratorNormalCompletion10 && _iterator10.return) {
+                _iterator10.return();
             }
         } finally {
-            if (_didIteratorError9) {
-                throw _iteratorError9;
+            if (_didIteratorError10) {
+                throw _iteratorError10;
             }
         }
     }
@@ -4011,6 +4202,19 @@ Game_Map.prototype._getTileset = function (tileId) {
         }
     }
     return null;
+};
+
+Game_Map.prototype._getTilesetId = function (tileId) {
+    for (var idx = 0; idx < this.tiledData.tilesets.length; idx++) {
+        var tileset = this.tiledData.tilesets[idx];
+        if (tileId >= tileset.firstgid && tileId < tileset.firstgid + tileset.tilecount) {
+            if (tileset.properties && tileset.properties.ignoreLoading) {
+                return -1;
+            }
+            return idx;
+        }
+    }
+    return -1;
 };
 
 Game_Map.prototype.tileWidth = function () {
@@ -4049,12 +4253,15 @@ var _regionId = Game_Map.prototype.regionId;
 Game_Map.prototype.regionId = function (x, y) {
     var allIds = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
-    if (!this.isTiledMap()) {
+    if (!this.isTiledMap() || !this.isTiledInitialized()) {
         return _regionId.call(this, x, y);
     }
 
     var index = Math.floor(x) + this.width() * Math.floor(y);
     var regionMap = this._regions[this.currentMapLevel];
+    if (!regionMap) {
+        return allIds ? [0] : 0;
+    }
     var regionLayer = this._regionsLayers[this.currentMapLevel];
 
     var regionValue = regionMap.main[index];
@@ -4103,6 +4310,9 @@ Game_Map.prototype.checkPassage = function (x, y, bit) {
     }
     var index = x + this.width() * y;
     var arrows = this._arrowCollisionMap[level];
+    if (!arrows) {
+        return true;
+    }
     var arrowLayer = this._arrowCollisionMapLayers[level];
     var arrowValue = arrows.main[index];
 
@@ -4157,6 +4367,9 @@ Game_Map.prototype.isPassable = function (x, y, d) {
 
     var index = x + this.width() * y;
     var collisionMap = this._collisionMap[level];
+    if (!collisionMap) {
+        return true;
+    }
     var collisionLayer = this._collisionMapLayers[level];
     var collisionValue = collisionMap.main[index];
 
@@ -4195,6 +4408,9 @@ Game_Map.prototype.getIsPassableLayers = function (level) {
 
 Game_Map.prototype.checkMapLevelChanging = function (x, y) {
     var mapLevelChange = this._mapLevelChange[this.currentMapLevel];
+    if (!mapLevelChange) {
+        return false;
+    }
     var mapLevelChangeLayer = this._mapLevelChangeLayers[this.currentMapLevel];
     var index = y * this.width() + x;
     var mapLevelChangeValue = mapLevelChange.main[index];
@@ -4222,6 +4438,9 @@ Game_Map.prototype.checkMapLevelChanging = function (x, y) {
 
 Game_Map.prototype.checkPositionHeight = function (x, y) {
     var positionHeightChange = this._positionHeightChange[this.currentMapLevel];
+    if (!positionHeightChange) {
+        return -1;
+    }
     var positionHeightChangeLayer = this._positionHeightChangeLayers[this.currentMapLevel];
     var index = y * this.width() + x;
     var positionHeightChangeValue = positionHeightChange.main[index];
@@ -4247,6 +4466,9 @@ Game_Map.prototype.getTileFlags = function (x, y) {
     }
     var index = x + this.width() * y;
     var tileFlags = this._tileFlags[level];
+    if (!tileFlags) {
+        return [];
+    }
     var tileFlagsLayer = this._tileFlagsLayers[level];
     var tileFlagsValue = tileFlags.main[index] ? tileFlags.main[index].slice(0) : [];
 
@@ -4279,7 +4501,7 @@ Game_Map.prototype.renderTileFlags = function (x, y) {
 };
 
 Game_Map.prototype.getTileFlagLayers = function (level) {
-    return this._tileFlagLayers[level].slice(0);
+    return this._tileFlagsLayers[level].slice(0);
 };
 
 Game_Map.prototype.checkHasTileFlag = function (x, y, flag) {
@@ -4511,7 +4733,7 @@ Game_Map.prototype.isHealFloor = function (x, y) {
     return this.isValid(x, y) && this.checkHasTileFlag(x, y, 'heal', render);
 };
 
-Game_Map.prototype.getLayerProperties = function () {
+Game_Map.prototype.getAllLayerProperties = function () {
     var layer = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : -1;
     var ignoreHidden = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
 
@@ -4639,6 +4861,88 @@ Game_Map.prototype.waypoint = function (waypoint) {
         return this._waypoints[waypoint];
     }
     return null;
+};
+
+var _update = Game_Map.prototype.update;
+Game_Map.prototype.update = function (sceneActive) {
+    this.setLayerProperties();
+    _update.call(this, sceneActive);
+};
+
+Game_Map.prototype.getLayerProperties = function (layerId) {
+    return Object.assign({}, this._layerProperties[layerId]);
+};
+
+Game_Map.prototype.setLayerProperties = function () {
+    var _this2 = this;
+
+    this._layerProperties.forEach(function (props, i) {
+        var layer = _this2.tiledData.layers[i];
+        if (props.transition) {
+            props.isShown = !TiledManager.checkLayerHidden(layer);
+            props.transitionPhase = Math.max(0, Math.min(props.transition, props.transitionPhase + (props.isShown ? 1 : -1)));
+        }
+        if (props.autoSpeedX) {
+            props.autoX += props.autoSpeedX;
+            if (props.autoDuration || props.imageWidth) {
+                while (props.autoX < 0) {
+                    props.autoX += props.autoDuration || props.imageWidth;
+                }
+                while (props.autoX > props.imageWidth) {
+                    props.autoX -= props.autoDuration || props.imageWidth;
+                }
+            }
+        }
+        if (props.autoSpeedY) {
+            props.autoY += props.autoSpeedY;
+            if (props.imageHeight) {
+                while (props.autoY < 0) {
+                    props.autoY += props.autoDuration || props.imageHeight;
+                }
+                while (props.autoY > props.imageHeight) {
+                    props.autoY -= props.autoDuration || props.imageHeight;
+                }
+            }
+        }
+    });
+};
+
+var _battleback1Name = Game_Map.prototype.battleback1Name;
+Game_Map.prototype.battleback1Name = function () {
+    if (!this.isTiledMap()) {
+        return _battleback1Name.call(this);
+    }
+    var tileProps = Game_Map.prototype.getTileProperties($gamePlayer.x, $gamePlayer.y);
+    var battleback = false;
+    Object.keys(tileProps).forEach(function (layerId) {
+        var props = tileProps[layerId];
+        if (props.hasOwnProperty('battleback1Name')) {
+            battleback = props.battleback1Name;
+        }
+    });
+    if (battleback || battleback === '') {
+        return battleback;
+    }
+    return _battleback1Name.call(this);
+};
+
+var _battleback2Name = Game_Map.prototype.battleback2Name;
+Game_Map.prototype.battleback2Name = function () {
+    if (!this.isTiledMap()) {
+        return _battleback2Name.call(this);
+    }
+    var tileProps = Game_Map.prototype.getTileProperties($gamePlayer.x, $gamePlayer.y);
+    var battleback = false;
+    Object.keys(tileProps).forEach(function (layerId) {
+        var props = tileProps[layerId];
+        if (props.hasOwnProperty('battleback2Name')) {
+            battleback = props.battleback2Name;
+        }
+    });
+    if (battleback || battleback === '') {
+        return battleback;
+    }
+    return _battleback2Name.call(this);
 };
 
 /***/ }),
@@ -4919,6 +5223,37 @@ Game_Player.prototype.getOnVehicle = function () {
     return this._vehicleGettingOn;
 };
 
+var _gamePlayerTriggerTouchActionD2 = Game_Player.prototype.triggerTouchActionD2;
+Game_Player.prototype.triggerTouchActionD2 = function (x2, y2) {
+    if (!$gameMap.isTiledMap()) {
+        return _gamePlayerTriggerTouchActionD2.call(this, x2, y2);
+    }
+    if ($gameMap.boat().pos(x2, y2) || $gameMap.ship().pos(x2, y2)) {
+        if (TouchInput.isTriggered() && this.getOnVehicle()) {
+            return true;
+        }
+    }
+    if (this.isInBoat() || this.isInShip()) {
+        if (TouchInput.isTriggered() && this.getOffVehicle()) {
+            return true;
+        }
+    }
+    var vehicles = $gameMap.vehicles(true);
+    for (var idx = 0; idx < vehicles.length; idx++) {
+        var vehicle = $gameMap.vehicle(vehicles[idx]);
+        if (!vehicle.vehicleData || !vehicle.vehicleData.hasOwnProperty('hasCollision') || vehicle.vehicleData.hasCollision === 'true' || vehicle.vehicleData.hasCollision === true) {
+            if (vehicle.pos(x2, y2) && TouchInput.isTriggered() && this.getOnVehicle()) {
+                return true;
+            }
+            if (this._vehicleType === vehicles[idx] && TouchInput.isTriggered() && this.getOffVehicle()) {
+                return true;
+            }
+        }
+    }
+    this.checkEventTriggerThere([0, 1, 2]);
+    return $gameMap.setupStartingEvent();
+};
+
 var _isInVehicle = Game_Player.prototype.isInVehicle;
 Game_Player.prototype.isInVehicle = function () {
     if (!$gameMap.isTiledMap()) {
@@ -4953,7 +5288,7 @@ Game_Player.prototype.performTransfer = function () {
                 }
             }
             var offsets = $gameMap.offsets();
-            if (offsets && offsets.x && offsets.y) {
+            if (offsets && offsets.hasOwnProperty('x') && offsets.hasOwnProperty('y')) {
                 newX -= offsets.x;
                 newY -= offsets.y;
             }
@@ -5134,7 +5469,20 @@ Spriteset_Map.prototype.loadTileset = function () {
             if (tileset.properties && tileset.properties.ignoreLoading) {
                 continue;
             }
-            this._tilemap.bitmaps[i] = ImageManager.loadParserTileset(tileset.image, 0);
+            if (tileset.image) {
+                var bitmap = ImageManager.loadParserTileset(tileset.image, 0);
+                this._tilemap.bitmaps.push(bitmap);
+                this._tilemap.indexedBitmaps[i] = bitmap;
+            } else {
+                this._tilemap.indexedBitmaps[i] = [];
+                for (var tile = 0; tile < tileset.tilecount; tile++) {
+                    if (tileset.tiles[tile]) {
+                        var _bitmap = ImageManager.loadParserTileset(tileset.tiles[tile].image, 0);
+                        this._tilemap.bitmaps.push(_bitmap);
+                        this._tilemap.indexedBitmaps[i][tile] = _bitmap;
+                    }
+                }
+            }
             i++;
         }
     } catch (err) {
@@ -5162,7 +5510,7 @@ Spriteset_Map.prototype.update = function () {
     //Disabed updateHideOnLevel, since it got moved to the general layer hide functions
     //this._updateHideOnLevel();
     this._updateHideOnSpecial();
-    this._tilemap.updateParallax();
+    this._tilemap.updateImageLayer();
 };
 
 Spriteset_Map.prototype.updateTileset = function () {

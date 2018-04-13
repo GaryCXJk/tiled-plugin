@@ -1,10 +1,16 @@
 import TiledTileLayer from "./TiledTileLayer";
 
+let pluginParams = PluginManager.parameters("YED_Tiled");
+/**
+ * This class handles the tilemap
+ */
 export class TiledTilemap extends ShaderTilemap {
     initialize(tiledData) {
+        this.indexedBitmaps = [];
         this._tiledData = {};
         this._layers = [];
-        this._parallaxlayers = [];
+        this._imageLayers = [];
+        this._objectTiles = [];
         this._priorityTiles = [];
         this._priorityTilesCount = 0;
         this.tiledData = tiledData;
@@ -88,16 +94,10 @@ export class TiledTilemap extends ShaderTilemap {
                 continue;
             }
 
-            let layer = new TiledTileLayer(zIndex, [], useSquareShader);
+            let layer = new TiledTileLayer(zIndex, [], useSquareShader, 32);
             layer.layerId = id; // @dryami: hack layer index
             layer.spriteId = Sprite._counter++;
             layer.alpha = layerData.opacity;
-            if(!!layerData.properties && layerData.properties.transition) {
-                layer.transition = layerData.properties.transition
-                layer.isShown = !TiledManager.checkLayerHidden(layerData)
-                layer.transitionStep = layer.isShown ? layer.transition : 0
-                layer.minAlpha = Math.min(layer.alpha, (layerData.properties.minimumOpacity || 0))
-            }
             this._layers.push(layer);
             this.addChild(layer);
             id++;
@@ -107,16 +107,17 @@ export class TiledTilemap extends ShaderTilemap {
     }
 
     _createPriorityTiles() {
-        let pluginParams = PluginManager.parameters("YED_Tiled");
         let size = parseInt(pluginParams["Priority Tiles Limit"]);
         let zIndex = parseInt(pluginParams["Z - Player"]);
-        for (let x of Array(size).keys()) {
-            let sprite = new Sprite_TiledPriorityTile();
-            sprite.z = sprite.zIndex = zIndex;
-            sprite.layerId = -1;
-            sprite.hide();
-            this.addChild(sprite);
-            this._priorityTiles.push(sprite);
+        if(size > 0) {
+            for (let x of Array(size).keys()) {
+                let sprite = new Sprite_TiledPriorityTile();
+                sprite.z = sprite.zIndex = zIndex;
+                sprite.layerId = -1;
+                sprite.hide();
+                this.addChild(sprite);
+                this._priorityTiles.push(sprite);
+            }
         }
     }
 
@@ -125,9 +126,24 @@ export class TiledTilemap extends ShaderTilemap {
     }
 
     refreshTileset() {
-        var bitmaps = this.bitmaps.map(function (x) { return x._baseTexture ? new PIXI.Texture(x._baseTexture) : x; });
+        var bitmaps = this.indexedBitmaps.map(function (x) {
+            if(Array.isArray(x)) {
+                return x.map(function(y) {
+                    return y._baseTexture ? new PIXI.Texture(y._baseTexture) : y;
+                })
+            }
+            return x._baseTexture ? new PIXI.Texture(x._baseTexture) : x;
+        });
         for (let layer of this._layers) {
-            layer.setBitmaps(bitmaps);
+            let props = $gameMap.getLayerProperties(layer.layerId);
+            let tilesetBitmaps = [];
+            if(!props.tilesets) {
+                continue;
+            }
+            props.tilesets.forEach(tilesetId => {
+                tilesetBitmaps.push(bitmaps[tilesetId]);
+            })
+            layer.setBitmaps(tilesetBitmaps);
         }
     }
 
@@ -226,14 +242,22 @@ export class TiledTilemap extends ShaderTilemap {
                 continue;
             }
             let tileId = obj.gid;
-            let textureId = this._getTextureId(tileId);
-            let dx = obj.x - startX * this._tileWidth;
-            let dy = obj.y - startY * this._tileHeight - obj.height;
+            let realTileId = tileId & 0x1FFFFFFF;
+            let textureId = this._getTextureId(realTileId);
+            let offsets = $gameMap.offsets();
+            let dx = obj.x - (startX + offsets.x) * this._tileWidth;
+            let dy = obj.y - (startY + offsets.y) * this._tileHeight - obj.height;
             let positionHeight = 0;
-            if(obj.properties && obj.properties.positionHeight) {
-                positionHeight = obj.properties.positionHeight;
+            let zIndex = false;
+            if(obj.properties) {
+                if(obj.properties.positionHeight) {
+                    positionHeight = obj.properties.positionHeight;
+                }
+                if(obj.properties.hasOwnProperty('zIndex')) {
+                    zIndex = obj.properties.zIndex;
+                }
             }
-            this._paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight);
+            this._paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight, zIndex);
         }
     }
 
@@ -261,6 +285,7 @@ export class TiledTilemap extends ShaderTilemap {
         let tileId = TiledManager.extractTileId(this.tiledData.layers[layer.layerId], tilePosition);
         let rectLayer = layer.children[0];
         let textureId = 0;
+        let props = $gameMap.getLayerProperties(layer.layerId);
 
         if (!tileId) {
             return;
@@ -272,7 +297,6 @@ export class TiledTilemap extends ShaderTilemap {
         }
 
         textureId = this._getTextureId(tileId);
-
         let tileset = this.tiledData.tilesets[textureId];
         let dx = x * this._tileWidth;
         let dy = y * this._tileHeight;
@@ -297,15 +321,22 @@ export class TiledTilemap extends ShaderTilemap {
             return;
         }
 
+        if(props.tilesets && props.tilesets.indexOf(textureId) > -1) {
+            textureId = props.tilesets.indexOf(textureId);
+        }
+        
         rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
     }
 
-    _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight = 0) {
+    _paintPriorityTile(layerId, textureId, tileId, startX, startY, dx, dy, positionHeight = 0, zIndex = false) {
         let tileset = this.tiledData.tilesets[textureId];
-        let w = tileset.tilewidth;
-        let h = tileset.tileheight;
+        let tileOrientation = (tileId >> 24) & 0xe0;
+        let realTileId = tileId & 0x1FFFFFFF;
+        var tile = tileset.tiles ? tileset.tiles[realTileId - tileset.firstgid] || {} : {};
+        let w = tile.imagewidth || tileset.tilewidth;
+        let h = tile.imageheight || tileset.tileheight;
         let tileCols = tileset.columns;
-        let rId = this._getAnimTileId(textureId, tileId - tileset.firstgid);
+        let rId = this._getAnimTileId(textureId, realTileId - tileset.firstgid);
         let ux = (rId % tileCols) * w;
         let uy = Math.floor(rId / tileCols) * h;
         let sprite = this._priorityTiles[this._priorityTilesCount];
@@ -314,6 +345,8 @@ export class TiledTilemap extends ShaderTilemap {
         let offsetY = layerData ? layerData.offsety || 0 : 0;
         let ox = 0;
         let oy = 0;
+        let flipH = tileOrientation === 0x20 || ((tileOrientation & 0x80) > 0);
+        let flipV = tileOrientation === 0x20 || ((tileOrientation & 0x40) > 0);
         if (this.roundPixels) {
             ox = Math.floor(this.origin.x);
             oy = Math.floor(this.origin.y);
@@ -322,30 +355,51 @@ export class TiledTilemap extends ShaderTilemap {
             oy = this.origin.y;
         }
 
-        if (this._priorityTilesCount >= this._priorityTiles.length) {
-            return;
+        let size = parseInt(pluginParams["Priority Tiles Limit"]);
+        if(this._priorityTilesCount >= this._priorityTiles.length) {
+            if (size > 0) {
+                return;
+            } else {
+                sprite = new Sprite_TiledPriorityTile();
+                sprite.z = sprite.zIndex = parseInt(pluginParams["Z - Player"]);
+                this.addChild(sprite);
+                this._priorityTiles.push(sprite);
+            }
         }
 
         sprite.layerId = layerId;
         sprite.anchor.x = 0.5;
-        sprite.anchor.y = 1.0;
+        sprite.anchor.y = (flipV ? 0.0 : 1.0);
         sprite.origX = dx;
         sprite.origY = dy;
+        sprite.scale.x = (flipH ? -1 : 1);
+        sprite.scale.y = (flipV ? -1 : 1);
         sprite.x = sprite.origX + startX * this._tileWidth - ox + offsetX + w / 2;
         sprite.y = sprite.origY + startY * this._tileHeight - oy + offsetY + h;
-        sprite.bitmap = this.bitmaps[textureId];
-        sprite.setFrame(ux, uy, w, h);
+        
+        let realTextureId = this._getTextureId(realTileId, true);
+        if(Array.isArray(this.indexedBitmaps[realTextureId])) {
+            var tile = tileset.tiles[realTileId - tileset.firstgid];
+            sprite.bitmap = this.indexedBitmaps[realTextureId][realTileId - tileset.firstgid];
+            sprite.setFrame(0, 0, tile.imagewidth, tile.imageheight);
+        } else {
+            sprite.bitmap = this.indexedBitmaps[realTextureId];
+            sprite.setFrame(ux, uy, w, h);
+        }
         sprite.priority = this._getPriority(layerId);
-        sprite.z = sprite.zIndex = this._getZIndex(layerId);
+        sprite.z = sprite.zIndex = (zIndex !== false ? zIndex : this._getZIndex(layerId));
         sprite.positionHeight = positionHeight;
         sprite.show();
 
         this._priorityTilesCount += 1;
     }
 
-    _getTextureId(tileId) {
+    _getTextureId(tileId, ignore = false) {
         let textureId = 0;
         for (let tileset of this.tiledData.tilesets) {
+            if (ignore && tileset.properties && tileset.properties.ignoreLoading) {
+                continue;
+            }
             if (tileId < tileset.firstgid
                 || tileId >= tileset.firstgid + tileset.tilecount) {
                 textureId++;
@@ -392,7 +446,6 @@ export class TiledTilemap extends ShaderTilemap {
     }
 
     _isPriorityTile(layerId) {
-        let pluginParams = PluginManager.parameters("YED_Tiled");
         let playerZIndex = parseInt(pluginParams["Z - Player"]);
         let zIndex = this._getZIndex(layerId);
         return this._getPriority(layerId) > 0
@@ -410,6 +463,11 @@ export class TiledTilemap extends ShaderTilemap {
         return parseInt(layerData.properties.zIndex);
     }
 
+    /**
+     * Hides a layer based on the level the player is on
+     * 
+     * This method has been deprecated in favor of the more general method.
+     */
     hideOnLevel(level) {
         let layerIds = [];
         for (let layer of this._layers) {
@@ -445,7 +503,16 @@ export class TiledTilemap extends ShaderTilemap {
         })
     }
     
+    /**
+     * Hides layers on certain special conditions
+     * 
+     * This method will analyze each layer, then checks them with certain conditions. If
+     * they meet one condition, they will be hidden.
+     * 
+     * It also handles fading in and out layers.
+     */
     hideOnSpecial() {
+        /* Iterates through each layer */
         for(let layer of this._layers) {
             let layerData = this.tiledData.layers[layer.layerId];
 			if(layerData.properties) {
@@ -456,20 +523,21 @@ export class TiledTilemap extends ShaderTilemap {
 				   hide this layer. */
 				if (TiledManager.hasHideProperties(layerData)) {
 					/* If the layer isn't supposed to be hidden, add the layer to the container */
+                    let props = $gameMap.getLayerProperties(layer.layerId);
 					if (!hideLayer) {
-                        if(layer.transition) {
+                        if(props.transition) {
                             /* If this layer has a transition, we'll need to tell the layer that
                                it's supposed to be showing. */
-                               layer.isShown = true;
+                               props.isShown = true;
                         }
 						this.addChild(layer);
 						continue;
                     }
                     /* Since the layer is supposed to be hidden, let's first let it transition if
                        it has a transition fadeout. */
-                    if(layer.transition) {
-                        layer.isShown = false;
-                        if(layer.minAlpha > 0 || layer.transitionStep > 0) {
+                    if(props.transition) {
+                        props.isShown = false;
+                        if(props.minAlpha > 0 || props.transitionPhase > 0) {
                             this.addChild(layer)
                             continue;
                         }
@@ -482,8 +550,8 @@ export class TiledTilemap extends ShaderTilemap {
     }
 	
     _compareChildOrder(a, b) {
-        if((this._layers.indexOf(a) > -1 || this._parallaxlayers.indexOf(a) > -1) &&
-            (this._layers.indexOf(b) > -1 || this._parallaxlayers.indexOf(b) > -1)) {
+        if((this._layers.indexOf(a) > -1 || this._imageLayers.indexOf(a) > -1) &&
+            (this._layers.indexOf(b) > -1 || this._imageLayers.indexOf(b) > -1)) {
             if ((a.z || 0) !== (b.z || 0)) {
                 return (a.z || 0) - (b.z || 0);
             } else if ((a.priority || 0) !== (b.priority || 0)) {
@@ -521,6 +589,8 @@ export class TiledTilemap extends ShaderTilemap {
 		let viewportHeight = 0;
 		let viewportDeltaX = 0;
 		let viewportDeltaY = 0;
+
+        let props = $gameMap.getLayerProperties(id);
 
         if(!!layerData.properties) {
             if(!!layerData.properties.ignoreLoading) {
@@ -581,14 +651,11 @@ export class TiledTilemap extends ShaderTilemap {
         layer.layerId = id;
         layer.spriteId = Sprite._counter++;
         layer.alpha = layerData.opacity;
-        if(TiledManager.hasHideProperties(layerData) && !!layerData.properties.transition) {
-            layer._transition = layerData.properties.transition;
-            layer._baseAlpha = layerData.opacity;
-            layer._minAlpha = Math.min(layer._baseAlpha, (layerData.properties.minimumOpacity || 0));
-            layer._isShown = !TiledManager.checkLayerHidden(layerData);
-            layer._transitionPhase = layer._isShown ? layer._transition : 0
-        }
         layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+        layer.bitmap.addLoadListener(() => {
+            props.imageWidth = layer.bitmap.width;
+            props.imageHeight = layer.bitmap.height;
+        })
         layer.baseX = layerData.x + (layerData.offsetx || 0);
         layer.baseY = layerData.y + (layerData.offsety || 0);
         layer.z = layer.zIndex = zIndex;
@@ -613,20 +680,19 @@ export class TiledTilemap extends ShaderTilemap {
 			layer.mask = layerMask;
 			layer.hasViewport = true;
 		}
-        this._parallaxlayers.push(layer);
+        this._imageLayers.push(layer);
         this.addChild(layer);
     }
 
-    updateParallax() {
-        this._parallaxlayers.forEach(layer => {
+    updateImageLayer() {
+        this._imageLayers.forEach(layer => {
             let layerData = this.tiledData.layers[layer.layerId];
+            let props = $gameMap.getLayerProperties(layer.layerId);
             if(TiledManager.hasHideProperties(layerData)) {
                 let visibility = TiledManager.checkLayerHidden(layerData);
-                if(!!layerData.properties.transition) {
-                    layer._isShown = !visibility;
-                    layer._transitionPhase = Math.max(0, Math.min(layer._transition, layer._transitionPhase + (layer._isShown ? 1 : -1)));
-                    layer.alpha = (((layer._baseAlpha - layer._minAlpha) * (layer._transitionPhase / layer._transition)) + layer._minAlpha);
-                    visibility = layer._minAlpha > 0 || layer._transitionPhase > 0;
+                if(props.transition) {
+                    layer.alpha = (((props.baseAlpha - props.minAlpha) * (props.transitionPhase / props.transition)) + props.minAlpha);
+                    visibility = props.minAlpha > 0 || props.transitionPhase > 0;
                 }
                 layer.visible = visibility;
             }
@@ -638,45 +704,25 @@ export class TiledTilemap extends ShaderTilemap {
                 y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
             }
             if(!!layer.origin) {
+                let autoX = props.autoXFunction ? props.autoXFunction(props.autoX, props.autoY || 0) : 0;
+                let autoY = props.autoYFunction ? props.autoYFunction(props.autoX || 0, props.autoY) : 0;
                 if(!layer.repeatX) {
-                    layer.origin.x = layer.baseX - offsets.x + layer.autoX;
+                    layer.origin.x = layer.baseX - offsets.x + autoX;
                     layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;
                     layer.width = layer.bitmap.width;
                 } else {
-                    layer.origin.x = layer.baseX - offsets.x + layer.autoX + display.x * layer.deltaX;
+                    layer.origin.x = layer.baseX - offsets.x + autoX + display.x * layer.deltaX;
                     layer.x = 0;
                     layer.width = Graphics.width;
                 }
                 if(!layer.repeatY) {
-                    layer.origin.y = layer.baseY - offsets.y + layer.autoY;
+                    layer.origin.y = layer.baseY - offsets.y + autoY;
                     layer.y = layer.baseY - offsets.y - display.y * layer.deltaY;
                     layer.height = layer.bitmap.height;
                 } else {
-                    layer.origin.y = layer.baseY - offsets.y + layer.autoY + display.y * layer.deltaY;
+                    layer.origin.y = layer.baseY - offsets.y + autoY + display.y * layer.deltaY;
                     layer.y = 0;
                     layer.height = Graphics.height;
-                }
-                layer.autoX+= layer.stepAutoX;
-                layer.autoY+= layer.stepAutoY;
-                if(layer.bitmap.width > 0) {
-                    while(layer.autoX > layer.bitmap.width) {
-                        layer.autoX-= layer.bitmap.width;
-                    }
-                    while(layer.autoX < 0) {
-                        layer.autoX+= layer.bitmap.width;
-                    }
-                } else {
-                    layer.autoX = 0
-                }
-                if(layer.bitmap.height > 0) {
-                    while(layer.autoY > layer.bitmap.height) {
-                        layer.autoY-= layer.bitmap.height;
-                    }
-                    while(layer.autoY < 0) {
-                        layer.autoY+= layer.bitmap.height;
-                    }
-                } else {
-                    layer.autoY = 0
                 }
             } else {
                 layer.x = layer.baseX - offsets.x - display.x * layer.deltaX;

@@ -11,11 +11,11 @@ export default class TiledTileLayer extends PIXI.tilemap.CompositeRectTileLayer 
             this.tiledTileShader = new TiledTileShader(gl, renderer.plugins.tilemap.maxTextures, this.useSquare)
         }
         var alpha = this.alpha;
-        if(this.transition) {
-            this.transitionStep = Math.max(0, Math.min(this.transition, this.transitionStep + (this.isShown ? 1 : -1)));
-            alpha-= this.minAlpha
-            alpha*= (this.transitionStep / this.transition)
-            alpha+= this.minAlpha
+        var props = $gameMap.getLayerProperties(this.layerId);
+        if(props.transition) {
+            alpha-= props.minAlpha
+            alpha*= (props.transitionPhase / props.transition)
+            alpha+= props.minAlpha
         }
         //var shader = renderer.plugins.tilemap.getShader(this.useSquare);
         var shader = this.tiledTileShader;

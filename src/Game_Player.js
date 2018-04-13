@@ -68,6 +68,42 @@ Game_Player.prototype.getOnVehicle = function() {
     return this._vehicleGettingOn;
 };
 
+let _gamePlayerTriggerTouchActionD2 = Game_Player.prototype.triggerTouchActionD2
+Game_Player.prototype.triggerTouchActionD2 = function(x2, y2) {
+    if(!$gameMap.isTiledMap()) {
+        return _gamePlayerTriggerTouchActionD2.call(this, x2, y2);
+    }
+    if ($gameMap.boat().pos(x2, y2) || $gameMap.ship().pos(x2, y2)) {
+        if (TouchInput.isTriggered() && this.getOnVehicle()) {
+            return true;
+        }
+    }
+    if (this.isInBoat() || this.isInShip()) {
+        if (TouchInput.isTriggered() && this.getOffVehicle()) {
+            return true;
+        }
+    }
+    let vehicles = $gameMap.vehicles(true);
+    for(var idx = 0; idx < vehicles.length; idx++) {
+        let vehicle = $gameMap.vehicle(vehicles[idx]);
+        if(!vehicle.vehicleData ||
+            !vehicle.vehicleData.hasOwnProperty('hasCollision') ||
+            vehicle.vehicleData.hasCollision === 'true' ||
+            vehicle.vehicleData.hasCollision === true
+        ) {
+            if(vehicle.pos(x2, y2) && TouchInput.isTriggered() && this.getOnVehicle()) {
+                return true;
+            }
+            if(this._vehicleType === vehicles[idx] && TouchInput.isTriggered() && this.getOffVehicle()) {
+                return true;
+            }
+        }
+    }
+    this.checkEventTriggerThere([0,1,2]);
+    return $gameMap.setupStartingEvent();
+};
+
+
 let _isInVehicle = Game_Player.prototype.isInVehicle
 Game_Player.prototype.isInVehicle = function() {
     if(!$gameMap.isTiledMap()) {
@@ -100,7 +136,7 @@ Game_Player.prototype.performTransfer = function() {
                 }
             }
             let offsets = $gameMap.offsets();
-            if(offsets && offsets.x && offsets.y) {
+            if(offsets && offsets.hasOwnProperty('x') && offsets.hasOwnProperty('y')) {
                 newX-= offsets.x;
                 newY-= offsets.y;
             }

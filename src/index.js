@@ -110,6 +110,23 @@ TiledManager.createVehicle('boat', true)
 TiledManager.createVehicle('ship', true)
 TiledManager.createVehicle('airship', true)
 
+/* INITIALIZES AUTO FUNCTIONS */
+
+TiledManager.setAutoFunction('linear', {
+    x: (x, y) => { return x; },
+    y: (x, y) => { return y; }
+})
+
+TiledManager.setAutoFunction('sine', {
+    x: (x, y) => { return Math.sin(x * Math.PI / 180); },
+    y: (x, y) => { return Math.sin(y * Math.PI / 180); }
+})
+
+TiledManager.setAutoFunction('cosine', {
+    x: (x, y) => { return Math.cos(x * Math.PI / 180); },
+    y: (x, y) => { return Math.cos(y * Math.PI / 180); }
+})
+
 /* INITIALIZES PLUGIN COMMANDS */
 
 TiledManager.addPluginCommand('TiledTransferPlayer', function(args) {
