@@ -4,7 +4,7 @@ var fs = require('fs');
 var pdf = require('html-pdf');
 
 var html = fs.readFileSync('./doc/src/index.html', 'utf8');
-var mdDocs = ["introduction.md", "usage.md", "properties.md", "devhooks.md"];
+var mdDocs = ["introduction.md", "usage.md", "properties.md", "devhooks.md", "changes.md"];
 var bookPath = "doc/help.pdf";
 var commentPath = "doc/help.js";
 

@@ -139,7 +139,8 @@ TiledManager.addPluginCommand('TiledTransferPlayer', function(args) {
         direction = parseInt(direction);
     }
     if(isNaN(fadeType)) {
-        switch(direction.toLowerCase()) {
+        // Fix by FrillyWumpus
+        switch(fadeType.toLowerCase()) {
             case 'black':
                 fadeType = 0;
                 break;

@@ -1,7 +1,7 @@
 /******************************************************************************
  * YED_Tiled.js                                                               *
  ******************************************************************************
- * Tiled Plugin v2.00                                                         *
+ * Tiled Plugin v2.01                                                         *
  * By Archeia and Dr. Yami                                                    *
  ******************************************************************************
  * License: Custom                                                            *
@@ -12,7 +12,7 @@
  ******************************************************************************/
 
 /*:
- * @plugindesc v2.00 Plugin supports Tiled Map Editor maps with some additional
+ * @plugindesc v2.01 Plugin supports Tiled Map Editor maps with some additional
  * features.
  * @author Dr.Yami
  *
