@@ -468,6 +468,12 @@
  *   flagIsIce
  * The tile is slippery
  * 
+ * **battleback1Name**
+ * The file name of the battle background that should be used here
+ * 
+ * **battleback2Name**
+ * The file name of the battle background that should be used here
+ * 
  * --------------------------------------------------------------------------------
  * - Object properties                                                            -
  * --------------------------------------------------------------------------------
@@ -477,6 +483,10 @@
  * 
  *   vehicle
  * The vehicle that should be placed at this position.
+ * 
+ * **waypoint**
+ * The name of a waypoint. This can be used to determine a position on the map
+ * without having to rely on coordinates.
  * 
  * --------------------------------------------------------------------------------
  * - Image properties                                                             -
@@ -1914,7 +1924,7 @@ var TiledTilemap = exports.TiledTilemap = function (_ShaderTilemap) {
                     viewportX = layerData.properties.viewportX;
                 }
                 if (layerData.properties.hasOwnProperty('viewportY')) {
-                    viewportX = layerData.properties.viewportY;
+                    viewportY = layerData.properties.viewportY;
                 }
                 if (layerData.properties.hasOwnProperty('viewportWidth')) {
                     viewportWidth = layerData.properties.viewportWidth;
@@ -2255,6 +2265,10 @@ TiledManager.addPluginCommand('TiledTransferPlayer', function (args) {
     }
     $gamePlayer.reserveTransfer(mapId, 0, 0, direction, fadeType, waypoint);
     this.setWaitMode('transfer');
+});
+
+TiledManager.addPluginCommand('TiledSetLevel', function (args) {
+    $gameMap.currentMapLevel = parseInt(args[0]);
 });
 
 /* LOAD CUSTOM DATA FROM THE PARAMTERS */

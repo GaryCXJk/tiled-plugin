@@ -624,7 +624,7 @@ export class TiledTilemap extends ShaderTilemap {
 				viewportX = layerData.properties.viewportX;
 			}
 			if(layerData.properties.hasOwnProperty('viewportY')) {
-				viewportX = layerData.properties.viewportY;
+				viewportY = layerData.properties.viewportY;
 			}
 			if(layerData.properties.hasOwnProperty('viewportWidth')) {
 				viewportWidth = layerData.properties.viewportWidth;

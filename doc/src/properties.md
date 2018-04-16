@@ -147,6 +147,12 @@ The tile is a damage tile (player gets damaged when stepped on)
 **flagIsIce**  
 The tile is slippery
 
+**battleback1Name**
+The file name of the battle background that should be used here
+
+**battleback2Name**
+The file name of the battle background that should be used here
+
 ## Object properties
 
 **eventId**  
@@ -154,6 +160,10 @@ The event ID that should be placed at this position.
 
 **vehicle**  
 The vehicle that should be placed at this position.
+
+**waypoint**
+The name of a waypoint. This can be used to determine a position on the map
+without having to rely on coordinates.
 
 ## Image properties
 
