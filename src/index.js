@@ -175,6 +175,10 @@ TiledManager.addPluginCommand('TiledTransferPlayer', function(args) {
     this.setWaitMode('transfer');
 })
 
+TiledManager.addPluginCommand('TiledSetLevel', function (args) {
+    $gameMap.currentMapLevel = parseInt(args[0]);
+});
+
 /* LOAD CUSTOM DATA FROM THE PARAMTERS */
 
 TiledManager.getParameterFlags()
