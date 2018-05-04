@@ -150,9 +150,7 @@ TiledManager.processTiledData = function(parentLayer = false) {
 			TiledManager.processTiledData(layer);
 			Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers))
 			idx+= layer.layers.length - 1;
-			continue;
-        }
-		if(layer.type === 'tilelayer') {
+        } else if(layer.type === 'tilelayer') {
 			let encoding = layer.encoding || '';
 			if(encoding && _processEncoding.hasOwnProperty(encoding)) {
 				let encFunc = _processEncoding[encoding];
@@ -164,7 +162,10 @@ TiledManager.processTiledData = function(parentLayer = false) {
 					});
 				}
 			}
-		}
+        }
+
+        // Trigger listener that a layer has been processed.
+        TiledManager.triggerListener(TiledManager, "tiledlayerdataprocessed", layer, parentLayer);
     }
 }
 

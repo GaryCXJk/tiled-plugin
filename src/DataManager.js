@@ -23,6 +23,7 @@ DataManager.loadTiledMapData = function (mapId) {
             if (xhr.status === 200 || xhr.responseText !== "") {
                 DataManager._tempTiledData = JSON.parse(xhr.responseText);
                 TiledManager.processTiledData(DataManager._tempTiledData);
+                TiledManager.triggerListener(TiledManager, "tiledmapdataprocessed", DataManager._tempTiledData, mapId);
             }
             let tiledLoaded = true;
             let tilesRequired = 0;
