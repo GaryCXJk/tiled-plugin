@@ -862,54 +862,8 @@ Game_Map.prototype._setupTiledEvents = function () {
         }
 
         for (let object of layerData.objects) {
-            if (!object.properties) {
-                continue;
-            }
-
-            if(object.properties.waypoint) {
-                let x = object.x / this.tileWidth();
-                let y = object.y / this.tileHeight();
-                if(pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
-                    x = Math.floor(x);
-                    y = Math.floor(y);
-                }
-                this._waypoints[object.properties.waypoint] = {x, y}
-                continue;
-            }
-
-            if (!object.properties.eventId && !object.properties.vehicle) {
-                continue;
-            }
-
-            let event;
-
-            if(!!object.properties.vehicle) {
-                event = this.vehicle(object.properties.vehicle);
-                this._vehicles.push(object.properties.vehicle);
-            } else {
-                let eventId = parseInt(object.properties.eventId);
-                event = this._events[eventId];
-            }
-            if (!event) {
-                continue;
-            }
-            let x = object.x / this.tileWidth() - this._offsets.x;
-            let y = object.y / this.tileHeight() - this._offsets.y;
-            if(pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
-                x = Math.floor(x);
-                y = Math.floor(y);
-            }
-            if (this.isHalfTile()) {
-                x += 1;
-                y += 1;
-            }
-            if(!!object.properties.vehicle) {
-                event.loadSystemSettings();
-                event.setLocation(this.mapId(), x, y);
-            } else {
-                event.locate(x, y);
-            }
-			event._tiledProperties = object.properties;
+            // call the object resolvers to perform actions based on the objects
+            TiledManager.processTiledObject(object, this);
         }
     }
 };

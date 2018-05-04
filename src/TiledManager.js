@@ -53,6 +53,8 @@ let _processEncoding = {
 	}
 };
 
+let _registeredObjectResolvers = [];
+
 TiledManager.addListener = function(objectName, event, callback, recursive = true) {
     if(typeof objectName === 'function') {
         objectName = objectName.name
@@ -293,6 +295,116 @@ TiledManager.setAutoFunction = function(identifier, functions = {}) {
 
 TiledManager.getAutoFunction = function(identifier) {
     return _autoFunctions[identifier] || false;
+}
+
+/* Tiled Object Handlers */
+TiledManager.objectResolvers = {};
+
+/**
+ * Registers an object resolver that will pre-process a tiled object.
+ * The object resolver should return true if it processed the object, so then
+ * other resolvers won't be called.
+ * @param {(object, map)=>boolean} resolver
+ */
+TiledManager.registerTiledObjectResolver = function (resolver) {
+    _registeredObjectResolvers.push(resolver);
+}
+
+/**
+ * Object resolver for handling waypoints
+ * @param {*} object 
+ * @param {*} map 
+ */
+TiledManager.objectResolvers.waypoint = function (object, map) {
+    if (object.properties && object.properties.waypoint) {
+
+        let x = object.x / map.tileWidth();
+        let y = object.y / map.tileHeight();
+        if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+            x = Math.floor(x);
+            y = Math.floor(y);
+        }
+
+        map._waypoints[object.properties.waypoint] = { x, y }
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Object resolver for mapping to an existing event
+ * @param {*} object 
+ * @param {*} map 
+ */
+TiledManager.objectResolvers.eventId = function (object, map) {
+    if (object.properties && object.properties.eventId) {
+        let event;
+        let eventId = parseInt(object.properties.eventId);
+        event = map._events[eventId];
+
+        if (event) {
+            let x = object.x / map.tileWidth() - map._offsets.x;
+            let y = object.y / map.tileHeight() - map._offsets.y;
+            if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                x = Math.floor(x);
+                y = Math.floor(y);
+            }
+            if (map.isHalfTile()) {
+                x += 1;
+                y += 1;
+            }
+
+            event.locate(x, y);
+
+            event._tiledProperties = object.properties;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Object resolver for mapping a vehicle
+ * @param {*} object 
+ * @param {*} map 
+ */
+TiledManager.objectResolvers.vehicle = function (object, map) {
+    if (object.properties && object.properties.eventId) {
+        let event = map.vehicle(object.properties.vehicle);
+        map._vehicles.push(object.properties.vehicle);
+
+        if (event) {
+            let x = object.x / map.tileWidth() - map._offsets.x;
+            let y = object.y / map.tileHeight() - map._offsets.y;
+            if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                x = Math.floor(x);
+                y = Math.floor(y);
+            }
+            if (map.isHalfTile()) {
+                x += 1;
+                y += 1;
+            }
+
+            event.loadSystemSettings();
+            event.setLocation(this.mapId(), x, y);
+
+            event._tiledProperties = object.properties;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+TiledManager.registerStandardResolvers = function() {
+    TiledManager.registerTiledObjectResolver(TiledManager.objectResolvers.waypoint);
+    TiledManager.registerTiledObjectResolver(TiledManager.objectResolvers.eventId);
+    TiledManager.registerTiledObjectResolver(TiledManager.objectResolvers.vehicle);
+}
+
+TiledManager.processTiledObject = function (object, map) {
+    _registeredObjectResolvers.some(r => r(object, map));
 }
 
 /* PLUGIN COMMANDS */
