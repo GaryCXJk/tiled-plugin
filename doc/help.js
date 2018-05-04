@@ -695,15 +695,15 @@
  * - Tiled Object Resolvers                                                       -
  * --------------------------------------------------------------------------------
  * 
- * Within Tiled, you can add objects that contain properties.  Having the ability to 
+ * Within Tiled, you can add objects that contain properties.  Having the ability to
  * intercept these objects and perform actions on the map while it's being loaded is
  * exposed through `Object Resolvers`.
  * 
- * These object resolvers are simply functions that are called whenever an object 
+ * These object resolvers are simply functions that are called whenever an object
  * is processed on the map.  The functions must follow the form:
  * 
  * ```javascript
- * function (tiledObject) {
+ * function (tiledObject, map) {
  * return true | false;
  * --------------------
  * }
@@ -717,7 +717,7 @@
  * 
  * ```javascript
  * // Add new resolvers to the TiledManager.objectResolvers
- * TiledManager.objectResolvers.eventRandomizer = function(object) {
+ * TiledManager.objectResolvers.eventRandomizer = function(object, map) {
  * if (object.type === "eventRandomizer") {
  * ----------------------------------------
  *         if (Math.random() * 100 > 50) {
