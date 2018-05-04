@@ -785,9 +785,113 @@
  * --------
  * The new level.
  * 
+ * TiledManager
+ * ============
+ * These are events that are triggered by the TiledManager.  Subscribe to them by adding a listener to the TiledManager
+ * 
+ *   tiledlayerdataprocessed
+ * Triggers when a tiled layer has been loaded and unencoded.  Can be useful
+ * to manipulate information on the layer before it gets rendered.
+ * 
+ * layer
+ * -----
+ * The layer that just finished processing.
+ * 
+ * parentLayer
+ * -----------
+ * The tiled layer that is the parent of this layer (such as a group parent)
+ * 
+ *   tiledmapdataprocessed
+ * Triggers when all the layers have been processed.  Can be useful to manipulate the
+ * map data before it gets rendered.
+ * 
+ * mapData
+ * -------
+ * The entire map data with all layers processed.
+ * 
+ * mapId
+ * -----
+ * The map Id of the map that was loaded.
+ * 
+ * --------------------------------------------------------------------------------
+ * - Tiled Object Resolvers                                                       -
+ * --------------------------------------------------------------------------------
+ * 
+ * Within Tiled, you can add objects that contain properties.  Having the ability to 
+ * intercept these objects and perform actions on the map while it's being loaded is
+ * exposed through `Object Resolvers`.
+ * 
+ * These object resolvers are simply functions that are called whenever an object 
+ * is processed on the map.  The functions must follow the form:
+ * 
+ * ```javascript
+ * function (tiledObject) {
+ * return true | false;
+ * --------------------
+ * }
+ * ```
+ * 
+ * All registered object resolver will be called for each object encountered, but if
+ * one of the resolvers returns `true` then no more resolvers will be called for that
+ * object.
+ * 
+ * Object resolvers are registered by calling:
+ * 
+ * ```javascript
+ * // Add new resolvers to the TiledManager.objectResolvers
+ * TiledManager.objectResolvers.eventRandomizer = function(object) {
+ * if (object.type === "eventRandomizer") {
+ * ----------------------------------------
+ *         if (Math.random() * 100 > 50) {
+ * object.properties.eventId = object.properties.event1;
+ * -----------------------------------------------------
+ *         } else {
+ * object.properties.eventId = object.properties.event2;
+ * -----------------------------------------------------
+ *         }
+ * 
+ * // We assigned an event Id that corresponds to an
+ * -------------------------------------------------
+ *         // event on the map, now we can call the eventId
+ * // resolver to map the event to this object
+ * -------------------------------------------
+ *         TiledManager.objectResolvers.eventId(object);
+ * return true;
+ * ------------
+ *     }
+ * 
+ * // not my object, continue processing
+ * -------------------------------------
+ *     return false;
+ * }
+ * 
+ * TiledManager.registerObjectResolver(
+ * TiledManager.objectResolvers.eventRandomizer
+ * --------------------------------------------
+ * );
+ * ```
+ * 
+ * The following object resolvers are pre-registered and will run before any custom
+ * resolvers:
+ * 
+ * * waypoint - processes waypoints
+ * * eventId - maps an existing event to the object location
+ * * vehicle - processes vehicles
  * ================================================================================
  * = Changes                                                                      =
  * ================================================================================
+ * 
+ * **v2.02 (2018-05-03)**
+ * Author: Frilly Wumpus
+ * 
+ * * Added: new event hook for intercepting when each tiled data layer has finished
+ *   processing/unencoding
+ * * Added: new event hook for intercepting once the entire tiled data map has
+ *   been processed
+ * * Added: new ObjectResolver functions to be able to define and
+ *   process custom Tiled objects.
+ * * Fix: Updated `triggerListener` to work with static classes like
+ *   the TileManager
  * 
  *   v2.01 (2018-04-13)
  * * Fix: Crash when using TiledTransferPlayer while using a text string to
@@ -2219,6 +2323,8 @@ TiledManager.setAutoFunction('cosine', {
     }
 });
 
+TiledManager.registerStandardResolvers();
+
 /* INITIALIZES PLUGIN COMMANDS */
 
 TiledManager.addPluginCommand('TiledTransferPlayer', function (args) {
@@ -2371,6 +2477,7 @@ DataManager.loadTiledMapData = function (mapId) {
                 if (xhr.status === 200 || xhr.responseText !== "") {
                     DataManager._tempTiledData = JSON.parse(xhr.responseText);
                     TiledManager.processTiledData(DataManager._tempTiledData);
+                    TiledManager.triggerListener(TiledManager, "tiledmapdataprocessed", DataManager._tempTiledData, mapId);
                 }
                 var tiledLoaded = true;
                 var tilesRequired = 0;
@@ -2527,6 +2634,8 @@ var _processEncoding = {
     }
 };
 
+var _registeredObjectResolvers = [];
+
 TiledManager.addListener = function (objectName, event, callback) {
     var recursive = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
 
@@ -2546,23 +2655,38 @@ TiledManager.addListener = function (objectName, event, callback) {
 TiledManager.triggerListener = function (object, event) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-    var objectName = object.constructor.name;
+
+    // Handle static classes such as managers
+    var isStatic = object.constructor.name === "Function";
+    var objectName = isStatic ? object.name : object.constructor.name;
+
     if (!_listeners[objectName] || !_listeners[objectName][event]) {
         return false;
     }
-    var top = true;
-    var proto = object.__proto__;
-    while (proto) {
-        objectName = proto.constructor.name;
-        if (_listeners[objectName] && _listeners[objectName][event]) {
-            _listeners[objectName][event].forEach(function (callback) {
-                if (top || callback.recursive) {
-                    callback.call(object, options);
+
+    if (isStatic) {
+        _listeners[objectName][event].forEach(function (callback) {
+            if (top || callback.recursive) {
+                callback.call(object, options);
+            }
+        });
+    } else {
+        (function () {
+            var top = true;
+            var proto = object.__proto__;
+            while (proto) {
+                objectName = proto.constructor.name;
+                if (_listeners[objectName] && _listeners[objectName][event]) {
+                    _listeners[objectName][event].forEach(function (callback) {
+                        if (top || callback.recursive) {
+                            callback.call(object, options);
+                        }
+                    });
                 }
-            });
-        }
-        top = false;
-        proto = proto.__proto__;
+                top = false;
+                proto = proto.__proto__;
+            }
+        })();
     }
 };
 
@@ -2619,9 +2743,7 @@ TiledManager.processTiledData = function () {
             TiledManager.processTiledData(layer);
             Array.prototype.splice.apply(parentLayer.layers, [idx, 1].concat(layer.layers));
             idx += layer.layers.length - 1;
-            continue;
-        }
-        if (layer.type === 'tilelayer') {
+        } else if (layer.type === 'tilelayer') {
             var encoding = layer.encoding || '';
             if (encoding && _processEncoding.hasOwnProperty(encoding)) {
                 (function () {
@@ -2636,6 +2758,9 @@ TiledManager.processTiledData = function () {
                 })();
             }
         }
+
+        // Trigger listener that a layer has been processed.
+        TiledManager.triggerListener(TiledManager, "tiledlayerdataprocessed", layer, parentLayer);
     }
 };
 
@@ -2777,6 +2902,118 @@ TiledManager.setAutoFunction = function (identifier) {
 
 TiledManager.getAutoFunction = function (identifier) {
     return _autoFunctions[identifier] || false;
+};
+
+/* Tiled Object Handlers */
+TiledManager.objectResolvers = {};
+
+/**
+ * Registers an object resolver that will pre-process a tiled object.
+ * The object resolver should return true if it processed the object, so then
+ * other resolvers won't be called.
+ * @param {(object, map)=>boolean} resolver
+ */
+TiledManager.registerTiledObjectResolver = function (resolver) {
+    _registeredObjectResolvers.push(resolver);
+};
+
+/**
+ * Object resolver for handling waypoints
+ * @param {*} object 
+ * @param {*} map 
+ */
+TiledManager.objectResolvers.waypoint = function (object, map) {
+    if (object.properties && object.properties.waypoint) {
+
+        var x = object.x / map.tileWidth();
+        var y = object.y / map.tileHeight();
+        if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+            x = Math.floor(x);
+            y = Math.floor(y);
+        }
+
+        map._waypoints[object.properties.waypoint] = { x: x, y: y };
+        return true;
+    }
+    return false;
+};
+
+/**
+ * Object resolver for mapping to an existing event
+ * @param {*} object 
+ * @param {*} map 
+ */
+TiledManager.objectResolvers.eventId = function (object, map) {
+    if (object.properties && object.properties.eventId) {
+        var event = void 0;
+        var eventId = parseInt(object.properties.eventId);
+        event = map._events[eventId];
+
+        if (event) {
+            var x = object.x / map.tileWidth() - map._offsets.x;
+            var y = object.y / map.tileHeight() - map._offsets.y;
+            if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                x = Math.floor(x);
+                y = Math.floor(y);
+            }
+            if (map.isHalfTile()) {
+                x += 1;
+                y += 1;
+            }
+
+            event.locate(x, y);
+
+            event._tiledProperties = object.properties;
+            return true;
+        }
+    }
+
+    return false;
+};
+
+/**
+ * Object resolver for mapping a vehicle
+ * @param {*} object 
+ * @param {*} map 
+ */
+TiledManager.objectResolvers.vehicle = function (object, map) {
+    if (object.properties && object.properties.eventId) {
+        var event = map.vehicle(object.properties.vehicle);
+        map._vehicles.push(object.properties.vehicle);
+
+        if (event) {
+            var x = object.x / map.tileWidth() - map._offsets.x;
+            var y = object.y / map.tileHeight() - map._offsets.y;
+            if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+                x = Math.floor(x);
+                y = Math.floor(y);
+            }
+            if (map.isHalfTile()) {
+                x += 1;
+                y += 1;
+            }
+
+            event.loadSystemSettings();
+            event.setLocation(this.mapId(), x, y);
+
+            event._tiledProperties = object.properties;
+            return true;
+        }
+    }
+
+    return false;
+};
+
+TiledManager.registerStandardResolvers = function () {
+    TiledManager.registerTiledObjectResolver(TiledManager.objectResolvers.waypoint);
+    TiledManager.registerTiledObjectResolver(TiledManager.objectResolvers.eventId);
+    TiledManager.registerTiledObjectResolver(TiledManager.objectResolvers.vehicle);
+};
+
+TiledManager.processTiledObject = function (object, map) {
+    _registeredObjectResolvers.some(function (r) {
+        return r(object, map);
+    });
 };
 
 /* PLUGIN COMMANDS */
@@ -4124,54 +4361,8 @@ Game_Map.prototype._setupTiledEvents = function () {
                 for (var _iterator11 = layerData.objects[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
                     var object = _step11.value;
 
-                    if (!object.properties) {
-                        continue;
-                    }
-
-                    if (object.properties.waypoint) {
-                        var _x8 = object.x / this.tileWidth();
-                        var _y = object.y / this.tileHeight();
-                        if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
-                            _x8 = Math.floor(_x8);
-                            _y = Math.floor(_y);
-                        }
-                        this._waypoints[object.properties.waypoint] = { x: _x8, y: _y };
-                        continue;
-                    }
-
-                    if (!object.properties.eventId && !object.properties.vehicle) {
-                        continue;
-                    }
-
-                    var event = void 0;
-
-                    if (!!object.properties.vehicle) {
-                        event = this.vehicle(object.properties.vehicle);
-                        this._vehicles.push(object.properties.vehicle);
-                    } else {
-                        var eventId = parseInt(object.properties.eventId);
-                        event = this._events[eventId];
-                    }
-                    if (!event) {
-                        continue;
-                    }
-                    var x = object.x / this.tileWidth() - this._offsets.x;
-                    var y = object.y / this.tileHeight() - this._offsets.y;
-                    if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
-                        x = Math.floor(x);
-                        y = Math.floor(y);
-                    }
-                    if (this.isHalfTile()) {
-                        x += 1;
-                        y += 1;
-                    }
-                    if (!!object.properties.vehicle) {
-                        event.loadSystemSettings();
-                        event.setLocation(this.mapId(), x, y);
-                    } else {
-                        event.locate(x, y);
-                    }
-                    event._tiledProperties = object.properties;
+                    // call the object resolvers to perform actions based on the objects
+                    TiledManager.processTiledObject(object, this);
                 }
             } catch (err) {
                 _didIteratorError11 = true;

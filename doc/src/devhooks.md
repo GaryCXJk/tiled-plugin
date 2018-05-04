@@ -189,3 +189,79 @@ The old level.
     newLevel
 The new level.
 
+### TiledManager
+These are events that are triggered by the TiledManager.  Subscribe to them by adding a listener to the TiledManager
+
+**tiledlayerdataprocessed**  
+Triggers when a tiled layer has been loaded and unencoded.  Can be useful
+to manipulate information on the layer before it gets rendered.
+
+    layer
+The layer that just finished processing.
+
+    parentLayer
+The tiled layer that is the parent of this layer (such as a group parent)
+
+**tiledmapdataprocessed**  
+Triggers when all the layers have been processed.  Can be useful to manipulate the
+map data before it gets rendered.
+
+    mapData
+The entire map data with all layers processed.
+
+    mapId
+The map Id of the map that was loaded.
+
+## Tiled Object Resolvers
+
+Within Tiled, you can add objects that contain properties.  Having the ability to 
+intercept these objects and perform actions on the map while it's being loaded is
+exposed through `Object Resolvers`.
+
+These object resolvers are simply functions that are called whenever an object 
+is processed on the map.  The functions must follow the form:
+
+```javascript
+function (tiledObject) {
+    return true | false;
+}
+```
+
+All registered object resolver will be called for each object encountered, but if
+one of the resolvers returns `true` then no more resolvers will be called for that
+object.
+
+Object resolvers are registered by calling:
+
+```javascript
+// Add new resolvers to the TiledManager.objectResolvers
+TiledManager.objectResolvers.eventRandomizer = function(object) {
+    if (object.type === "eventRandomizer") {
+        if (Math.random() * 100 > 50) {
+            object.properties.eventId = object.properties.event1;
+        } else {
+            object.properties.eventId = object.properties.event2;
+        }
+
+        // We assigned an event Id that corresponds to an
+        // event on the map, now we can call the eventId
+        // resolver to map the event to this object
+        TiledManager.objectResolvers.eventId(object);
+        return true;
+    }
+
+    // not my object, continue processing
+    return false;
+}
+
+TiledManager.registerObjectResolver(
+       TiledManager.objectResolvers.eventRandomizer
+);
+```
+
+The following object resolvers are pre-registered and will run before any custom
+resolvers:
+
+* waypoint - processes waypoints
+* eventId - maps an existing event to the object location
+* vehicle - processes vehicles
