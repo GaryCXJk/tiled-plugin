@@ -68,23 +68,36 @@ TiledManager.addListener = function(objectName, event, callback, recursive = tru
 }
 
 TiledManager.triggerListener = function(object, event, options = {}) {
-    let objectName = object.constructor.name
+
+    // Handle static classes such as managers
+    let isStatic = object.constructor.name === "Function";
+    let objectName = isStatic ? object.name : object.constructor.name;
+
     if(!_listeners[objectName] || !_listeners[objectName][event]) {
         return false
     }
-    let top = true
-    let proto = object.__proto__
-    while(proto) {
-        objectName = proto.constructor.name
-        if(_listeners[objectName] && _listeners[objectName][event]) {
-            _listeners[objectName][event].forEach(callback => {
-                if(top || callback.recursive) {
-                    callback.call(object, options)
-                }
-            })
+
+    if (isStatic) {
+        _listeners[objectName][event].forEach(callback => {
+            if (top || callback.recursive) {
+                callback.call(object, options)
+            }
+        })
+    } else {
+        let top = true
+        let proto = object.__proto__
+        while(proto) {
+            objectName = proto.constructor.name
+            if(_listeners[objectName] && _listeners[objectName][event]) {
+                _listeners[objectName][event].forEach(callback => {
+                    if(top || callback.recursive) {
+                        callback.call(object, options)
+                    }
+                })
+            }
+            top = false
+            proto = proto.__proto__
         }
-        top = false
-        proto = proto.__proto__
     }
 }
 
