@@ -1,5 +1,17 @@
 # Changes
 
+**v2.02 (2018-05-03)**
+Author: Frilly Wumpus
+
+* Added: new event hook for intercepting when each tiled data layer has finished
+  processing/unencoding
+* Added: new event hook for intercepting once the entire tiled data map has
+  been processed
+* Added: new ObjectResolver functions to be able to define and
+  process custom Tiled objects.
+* Fix: Updated `triggerListener` to work with static classes like
+  the TileManager
+
 **v2.01 (2018-04-13)**  
 * Fix: Crash when using TiledTransferPlayer while using a text string to
   determine the fade type  

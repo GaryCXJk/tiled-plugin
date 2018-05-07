@@ -127,6 +127,8 @@ TiledManager.setAutoFunction('cosine', {
     y: (x, y) => { return Math.cos(y * Math.PI / 180); }
 })
 
+TiledManager.registerStandardResolvers();
+
 /* INITIALIZES PLUGIN COMMANDS */
 
 TiledManager.addPluginCommand('TiledTransferPlayer', function(args) {
