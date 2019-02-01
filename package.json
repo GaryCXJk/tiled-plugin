@@ -4,15 +4,16 @@
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
-    "babel-loader": "^7.1.5",
+    "babel-loader": "^8.0.5",
     "babel-preset-env": "^1.7.0",
     "filewatcher-webpack-plugin": "^1.2.0",
     "html-pdf": "^2.2.0",
-    "markdown-pdf": "^8.1.1",
+    "markdown-pdf": "^9.0.0",
     "markdown-toc": "^1.2.0",
     "remarkable": "^1.7.1",
     "through": "^2.3.8",
-    "webpack": "^3.12.0"
+    "webpack": "^4.29.0",
+    "webpack-dev-server": "^3.1.14"
   },
   "scripts": {
     "webpack": "webpack",
