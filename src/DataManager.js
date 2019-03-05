@@ -12,7 +12,7 @@ DataManager.loadMapData = function (mapId) {
 };
 
 DataManager.loadTiledMapData = function (mapId) {
-    var xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
     let pluginParams = PluginManager.parameters("YED_Tiled");
     xhr.open('GET', "./" + pluginParams["Maps Location"] + "Map" + mapId + ".json");
     xhr.overrideMimeType('application/json');
