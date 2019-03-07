@@ -1,4 +1,4 @@
-import { getProperty } from './helpers'
+import { getProperty, getParam } from './helpers'
 
 // Constants
 const pluginParams = PluginManager.parameters("YED_Tiled");
@@ -12,7 +12,7 @@ Object.defineProperty(Game_Map.prototype, 'tiledData', {
 
 Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
     get: function () {
-        let varID = parseInt(pluginParams["Map Level Variable"]);
+        const varID = parseInt(getParam('Map Level Variable', '0'));
         if (!varID) {
             return this._currentMapLevel;
         } else {
@@ -20,7 +20,7 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
         }
     },
     set: function (value) {
-        let varID = parseInt(pluginParams["Map Level Variable"]);
+        const varID = parseInt(getParam('Map Level Variable', '0'));
         if (!varID) {
             this._currentMapLevel = value;
         } else {

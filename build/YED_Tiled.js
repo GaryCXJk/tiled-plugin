@@ -2289,6 +2289,7 @@ function (_ShaderTilemap) {
           }
 
           if (this._isReflectLayer(layerData)) {
+            console.log(layerData);
             id++;
             continue;
           }
@@ -2776,6 +2777,7 @@ function (_ShaderTilemap) {
         textureId = props.tilesets.indexOf(textureId);
       }
 
+      console.log(layer, rectLayer);
       rectLayer.addRect(textureId, ux, uy, dx, dy, w, h);
     }
   }, {
@@ -3439,6 +3441,7 @@ function (_PIXI$tilemap$Composi) {
 
       var af = shader.uniforms.animationFrame = renderer.plugins.tilemap.tileAnim;
       var layers = this.children;
+      console.log(layers);
 
       for (var i = 0; i < layers.length; i++) {
         layers[i].renderWebGL(renderer, this.useSquare);
