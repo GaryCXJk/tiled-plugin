@@ -1,4 +1,4 @@
-let _initialize = Game_Vehicle.prototype.initialize
+const _initialize = Game_Vehicle.prototype.initialize;
 Game_Vehicle.prototype.initialize = function(type, vehicleData = false) {
     if(vehicleData) {
         this.vehicleData = vehicleData;
@@ -6,7 +6,7 @@ Game_Vehicle.prototype.initialize = function(type, vehicleData = false) {
     _initialize.call(this, type);
 };
 
-let _initMoveSpeed = Game_Vehicle.prototype.initMoveSpeed
+const _initMoveSpeed = Game_Vehicle.prototype.initMoveSpeed
 Game_Vehicle.prototype.initMoveSpeed = function() {
     _initMoveSpeed.call(this);
     if(!!this.vehicleData && this.vehicleData.moveSpeed) {

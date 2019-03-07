@@ -1,5 +1,6 @@
 const pluginParams = PluginManager.parameters("YED_Tiled");
 
+const _initMembers = Game_CharacterBase.prototype.initMembers;
 Game_CharacterBase.prototype.initMembers = function () {
     _initMembers.call(this);
     this.reflections = [];

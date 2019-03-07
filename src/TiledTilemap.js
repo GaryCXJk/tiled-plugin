@@ -74,7 +74,7 @@ export class TiledTilemap extends ShaderTilemap {
             }
 
             if (!!getProperty(properties, 'zIndex')) {
-                zIndex = parseInt(getProperty(layerData.properties, zIndex));
+                zIndex = parseInt(getProperty(properties, 'zIndex'));
             }
 
             if (!!getProperty(properties, 'collision')) {

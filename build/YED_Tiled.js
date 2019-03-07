@@ -1235,11 +1235,6 @@ TiledManager.addFlag('boat', 'ship', 'airship');
 TiledManager.addFlag('ladder', 'bush', 'counter', 'damage');
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp');
 TiledManager.addFlag('heal');
-/* INITIALIZES VEHICLES */
-
-TiledManager.createVehicle('boat', true);
-TiledManager.createVehicle('ship', true);
-TiledManager.createVehicle('airship', true);
 /* INITIALIZES AUTO FUNCTIONS */
 
 TiledManager.setAutoFunction('linear', {
@@ -1326,10 +1321,26 @@ TiledManager.addPluginCommand('TiledTransferPlayer', function (args) {
 TiledManager.addPluginCommand('TiledSetLevel', function (args) {
   $gameMap.currentMapLevel = parseInt(args[0]);
 });
-/* LOAD CUSTOM DATA FROM THE PARAMTERS */
+/* LOAD CUSTOM DATA FROM THE PARAMETERS */
 
 TiledManager.getParameterFlags();
-TiledManager.getParameterVehicles();
+/* INITIALIZES VEHICLES (HAS TO BE RUN AFTER CONTENT IS READY) */
+
+var initTiledManager = function initTiledManager() {
+  document.removeEventListener('DOMContentLoaded', initTiledManager);
+  window.removeEventListener('load', initTiledManager);
+  TiledManager.createVehicle('boat', true);
+  TiledManager.createVehicle('ship', true);
+  TiledManager.createVehicle('airship', true);
+  TiledManager.getParameterVehicles();
+};
+
+if (document.readyState === 'complete') {
+  initTiledManager();
+} else {
+  document.addEventListener('DOMContentLoaded', initTiledManager);
+  window.addEventListener('load', initTiledManager);
+}
 
 /***/ }),
 /* 1 */
@@ -1354,7 +1365,7 @@ var _getFilename = function _getFilename(path) {
 };
 
 var _getRealPath = function _getRealPath(path) {
-  return pluginParams["Tilesets Location"] + _getFilename(path);
+  return TiledManager.getParam('Tilesets Location', 'tilesets/') + _getFilename(path);
 };
 
 TilesetManager.getTileset = function (path) {
@@ -1432,8 +1443,7 @@ var tilesetLoaded = function tilesetLoaded(idx, tileset) {
 
 DataManager.loadTiledMapData = function (mapId) {
   var xhr = new XMLHttpRequest();
-  var pluginParams = PluginManager.parameters("YED_Tiled");
-  xhr.open('GET', "./" + pluginParams["Maps Location"] + "Map" + mapId + ".json");
+  xhr.open('GET', "./" + TiledManager.getParam('Maps Location', 'maps/') + "Map" + mapId + ".json");
   xhr.overrideMimeType('application/json'); // on success callback
 
   xhr.onreadystatechange = function () {
@@ -2255,7 +2265,7 @@ function (_ShaderTilemap) {
           }
 
           if (!!Object(_helpers__WEBPACK_IMPORTED_MODULE_0__["getProperty"])(properties, 'zIndex')) {
-            zIndex = parseInt(Object(_helpers__WEBPACK_IMPORTED_MODULE_0__["getProperty"])(layerData.properties, zIndex));
+            zIndex = parseInt(Object(_helpers__WEBPACK_IMPORTED_MODULE_0__["getProperty"])(properties, 'zIndex'));
           }
 
           if (!!Object(_helpers__WEBPACK_IMPORTED_MODULE_0__["getProperty"])(properties, 'collision')) {
@@ -3344,10 +3354,10 @@ var getProperty = function getProperty(properties, propertyName) {
     return null;
   }
 
-  var property = properties.find(function (prop) {
+  var property = Object.keys(properties).find(function (prop) {
     return prop.name === propertyName;
   });
-  return property ? property.value : null;
+  return property ? properties[property].value : null;
 };
 
 /***/ }),
@@ -5823,6 +5833,7 @@ Game_Screen.prototype.startFlashForHeal = function () {
 /***/ (function(module, exports) {
 
 var pluginParams = PluginManager.parameters("YED_Tiled");
+var _initMembers = Game_CharacterBase.prototype.initMembers;
 
 Game_CharacterBase.prototype.initMembers = function () {
   _initMembers.call(this);

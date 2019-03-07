@@ -20,8 +20,7 @@ const tilesetLoaded = (idx, tileset) => {
 
 DataManager.loadTiledMapData = function (mapId) {
     const xhr = new XMLHttpRequest();
-    let pluginParams = PluginManager.parameters("YED_Tiled");
-    xhr.open('GET', "./" + pluginParams["Maps Location"] + "Map" + mapId + ".json");
+    xhr.open('GET', "./" + TiledManager.getParam('Maps Location', 'maps/') + "Map" + mapId + ".json");
     xhr.overrideMimeType('application/json');
 
     // on success callback

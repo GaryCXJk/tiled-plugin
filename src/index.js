@@ -104,12 +104,6 @@ TiledManager.addFlag('ladder', 'bush', 'counter', 'damage')
 TiledManager.addFlag('ice', 'autoDown', 'autoLeft', 'autoRight', 'autoUp')
 TiledManager.addFlag('heal')
 
-/* INITIALIZES VEHICLES */
-
-TiledManager.createVehicle('boat', true)
-TiledManager.createVehicle('ship', true)
-TiledManager.createVehicle('airship', true)
-
 /* INITIALIZES AUTO FUNCTIONS */
 
 TiledManager.setAutoFunction('linear', {
@@ -181,7 +175,24 @@ TiledManager.addPluginCommand('TiledSetLevel', function (args) {
     $gameMap.currentMapLevel = parseInt(args[0]);
 });
 
-/* LOAD CUSTOM DATA FROM THE PARAMTERS */
+/* LOAD CUSTOM DATA FROM THE PARAMETERS */
 
 TiledManager.getParameterFlags()
-TiledManager.getParameterVehicles()
+
+/* INITIALIZES VEHICLES (HAS TO BE RUN AFTER CONTENT IS READY) */
+
+const initTiledManager = () => {
+    document.removeEventListener('DOMContentLoaded', initTiledManager);
+    window.removeEventListener('load', initTiledManager);
+    TiledManager.createVehicle('boat', true);
+    TiledManager.createVehicle('ship', true);
+    TiledManager.createVehicle('airship', true);
+    TiledManager.getParameterVehicles()
+}
+
+if (document.readyState === 'complete') {
+    initTiledManager();
+} else {
+    document.addEventListener('DOMContentLoaded', initTiledManager);
+    window.addEventListener('load', initTiledManager);
+}

@@ -19,7 +19,7 @@ const _getFilename = (path) => {
 };
 
 const _getRealPath = (path) => {
-    return pluginParams["Tilesets Location"] + _getFilename(path);
+    return TiledManager.getParam('Tilesets Location', 'tilesets/') + _getFilename(path);
 };
 
 TilesetManager.getTileset = function(path) {
