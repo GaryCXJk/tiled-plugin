@@ -14,11 +14,16 @@
     "remarkable": "^1.7.1",
     "through": "^2.3.8",
     "webpack": "^4.29.0",
+    "webpack-cli": "^3.2.3",
     "webpack-dev-server": "^3.1.14"
   },
   "scripts": {
     "webpack": "webpack",
     "webpack-watch": "webpack --watch",
     "build-pdf": "node build-pdf"
+  },
+  "dependencies": {
+    "@babel/core": "^7.3.4",
+    "@babel/preset-env": "^7.3.4"
   }
 }

@@ -1,4 +1,6 @@
 import { TiledTilemap } from "./TiledTilemap";
+import { newRectMask } from "./ReflectionMask";
+import { Sprite_CharacterReflect } from './Sprite_CharacterReflect';
 
 let _initialize = Spriteset_Battle.prototype.initialize
 Spriteset_Battle.prototype.initialize = function() {
@@ -17,6 +19,9 @@ Spriteset_Map.prototype.createTilemap = function () {
     this._tilemap.verticalWrap = $gameMap.isLoopVertical();
     this.loadTileset();
     this._baseSprite.addChild(this._tilemap);
+    this._reflectSurfaceSprite = new Sprite();
+    this.addChild(this._reflectSurfaceSprite);
+    this.createReflectionMask();
 };
 
 let _loadTileset = Spriteset_Map.prototype.loadTileset;
@@ -57,6 +62,7 @@ Spriteset_Map.prototype.update = function () {
     //Disabed updateHideOnLevel, since it got moved to the general layer hide functions
     //this._updateHideOnLevel();
     this._updateHideOnSpecial();
+    this._updateReflectSurface();
     this._tilemap.updateImageLayer();
 };
 
@@ -74,4 +80,65 @@ Spriteset_Map.prototype._updateHideOnSpecial = function () {
     if($gamePlayer && $gameMap) {
         this._tilemap.hideOnSpecial();
     }
+};
+
+const _isReflectSurface = (layerData) => {
+    const properties = layerData.properties;
+    return !!properties && properties.reflectionSurface;
+};
+
+Spriteset_Map.prototype.createReflectionMask = function () {
+    const tiledData = $gameMap.tiledData;
+    for (const layerData of tiledData.layers) {
+        if (!_isReflectSurface(layerData)) {
+            continue;
+        }
+
+        const mask = newRectMask(
+            $gameMap.width() * $gameMap.tileWidth(),
+            $gameMap.height() * $gameMap.tileHeight(),
+            layerData,
+        )
+
+        // hax mask id
+        mask.maskId = layerData.properties.reflectionSurface;
+
+        this._reflectSurfaceSprite.addChild(mask);
+    }
+};
+
+const _createCharacters = Spriteset_Map.prototype.createCharacters;
+Spriteset_Map.prototype.createCharacters = function() {
+    _createCharacters.call(this);
+
+    $gameMap.events().forEach(function(event) {
+        const sprite = new Sprite_CharacterReflect(event);
+        this._characterSprites.push(sprite);
+        this._tilemap.addChild(sprite);
+    }, this);
+    $gameMap.vehicles().forEach(function(vehicle) {
+        const sprite = new Sprite_CharacterReflect(vehicle);
+        this._characterSprites.push(sprite);
+        this._tilemap.addChild(sprite);
+    }, this);
+    $gamePlayer.followers().reverseEach(function(follower) {
+        const sprite = new Sprite_CharacterReflect(follower);
+        this._characterSprites.push(sprite);
+        this._tilemap.addChild(sprite);
+    }, this);
+    const sprite = new Sprite_CharacterReflect($gamePlayer);
+    this._characterSprites.push(sprite);
+    this._tilemap.addChild(sprite);
+
+    for (const sprite of this._characterSprites) {
+        sprite.reflectMaskList = this._reflectSurfaceSprite.children;
+    }
+};
+
+Spriteset_Map.prototype._updateReflectSurface = function() {
+    if (!this._reflectSurfaceSprite) {
+        return;
+    }
+    this._reflectSurfaceSprite.x = -$gameMap.displayX() * $gameMap.tileWidth();
+    this._reflectSurfaceSprite.y = -$gameMap.displayY() * $gameMap.tileHeight();
 };

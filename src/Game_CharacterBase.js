@@ -1,22 +1,27 @@
-let pluginParams = PluginManager.parameters("YED_Tiled");
+const pluginParams = PluginManager.parameters("YED_Tiled");
+
+Game_CharacterBase.prototype.initMembers = function () {
+    _initMembers.call(this);
+    this.reflections = [];
+};
 
 Game_CharacterBase.prototype.screenZ = function () {
     if (this._priorityType == 0) {
-        return parseInt(pluginParams["Z - Below Player"]);
+        return parseInt(TiledManager.getParam('Z - Below Player', '1'));
     }
     if (this._priorityType == 2) {
-        return parseInt(pluginParams["Z - Above Player"]);
+        return parseInt(TiledManager.getParam('Z - Above Player', '5'));
     }
-    return parseInt(pluginParams["Z - Player"]);
+    return parseInt(TiledManager.getParam('Z - Player', '3'));
 };
 
-let _distancePerFrame = Game_CharacterBase.prototype.distancePerFrame;
+const _distancePerFrame = Game_CharacterBase.prototype.distancePerFrame;
 Game_CharacterBase.prototype.distancePerFrame = function () {
-    let distance = _distancePerFrame.call(this);
+    const distance = _distancePerFrame.call(this);
     return distance * (48 / Math.min($gameMap.tileWidth(), $gameMap.tileHeight()));
 };
 
-let _refreshBushDepth = Game_CharacterBase.prototype.refreshBushDepth;
+const _refreshBushDepth = Game_CharacterBase.prototype.refreshBushDepth;
 Game_CharacterBase.prototype.refreshBushDepth = function() {
     if(!this.hasOwnProperty('_bushDepth')) {
         this._bushDepth = 0;
@@ -28,7 +33,7 @@ Game_CharacterBase.prototype.refreshBushDepth = function() {
     }
 };
 
-let _updateMove = Game_CharacterBase.prototype.updateMove;
+const _updateMove = Game_CharacterBase.prototype.updateMove;
 Game_CharacterBase.prototype.updateMove = function() {
     var hori = (this._realX > this._x ? 4 : (this._realX < this._x ? 6 : 0))
     var vert = (this._realY > this._y ? 8 : (this._realY < this._y ? 2 : 0))
@@ -52,11 +57,25 @@ Game_CharacterBase.prototype.updateMove = function() {
     }
 }
 
+const _update = Game_CharacterBase.prototype.update;
+Game_CharacterBase.prototype.update = function() {
+    _update.call(this);
+    this.updateReflection();
+};
+
+Game_CharacterBase.prototype.updateReflection = function() {
+    if (!$gameMap.isOnReflection(this)) {
+        this.reflections = [];
+        return;
+    }
+    this.reflections = $gameMap.getReflections(this);
+};
+
 Game_CharacterBase.prototype.locationHeight = function() {
 	return this._locationHeight || 0
 }
 
-let _isCollideWithVehicles = Game_CharacterBase.prototype.isCollidedWithVehicles
+const _isCollideWithVehicles = Game_CharacterBase.prototype.isCollidedWithVehicles
 Game_CharacterBase.prototype.isCollidedWithVehicles = function(x, y) {
     if(!_isCollideWithVehicles.call(this, x, y)) {
         let vehicles = $gameMap.vehicles();

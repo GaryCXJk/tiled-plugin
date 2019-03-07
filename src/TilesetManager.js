@@ -1,3 +1,4 @@
+const pluginParams = PluginManager.parameters("YED_Tiled");
 //-----------------------------------------------------------------------------
 // TilesetManager
 //
@@ -10,30 +11,38 @@ function TilesetManager() {
 window.TilesetManager = TilesetManager;
 TilesetManager.tilesets = {};
 
-let _getFilename = function(path) {
+let tilesetLoading = 0;
+
+const _getFilename = (path) => {
     let paths = path.split("/");
     return paths[paths.length - 1];
 };
 
-let _getRealPath = function(path) {
-    let pluginParams = PluginManager.parameters("YED_Tiled");
+const _getRealPath = (path) => {
     return pluginParams["Tilesets Location"] + _getFilename(path);
 };
 
 TilesetManager.getTileset = function(path) {
-    let realPath = _getRealPath(path);
     return TilesetManager.tilesets[_getFilename(path)];
 };
 
 TilesetManager.loadTileset = function(path, callback = false) {
+    if (TilesetManager.tilesets[_getFilename(path)]) {
+        if (callback) {
+            callback(TilesetManager.tilesets[_getFilename(path)]);
+        }
+    }
     let realPath = _getRealPath(path);
     var xhr = new XMLHttpRequest();
     xhr.open('GET', './' + realPath);
     xhr.overrideMimeType('application/json');
 
+    tilesetLoading++;
+
     // on success callback
     xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
+            tilesetLoading--;
             let tileset = false;
             if (xhr.status === 200 || xhr.responseText !== "") {
                 tileset = JSON.parse(xhr.responseText);
@@ -48,3 +57,11 @@ TilesetManager.loadTileset = function(path, callback = false) {
     // send request
     xhr.send();
 };
+
+TilesetManager.isReady = () => {
+    return !tilesetLoading;
+}
+
+TilesetManager.unload = () => {
+    TilesetManager.tilesets = {};
+}

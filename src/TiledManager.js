@@ -9,7 +9,7 @@ function TiledManager() {
 
 window.TiledManager = TiledManager;
 
-let pluginParams = PluginManager.parameters("YED_Tiled");
+const pluginParams = PluginManager.parameters("YED_Tiled");
 
 let _listeners = {}
 let _hideFunctions = {}
@@ -320,7 +320,7 @@ TiledManager.objectResolvers.waypoint = function (object, map) {
 
         let x = object.x / map.tileWidth();
         let y = object.y / map.tileHeight();
-        if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+        if (TiledManager.getParam('Constrain Events to Grid', 'true').toLowerCase() === 'true') {
             x = Math.floor(x);
             y = Math.floor(y);
         }
@@ -345,7 +345,7 @@ TiledManager.objectResolvers.eventId = function (object, map) {
         if (event) {
             let x = object.x / map.tileWidth() - map._offsets.x;
             let y = object.y / map.tileHeight() - map._offsets.y;
-            if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+            if (TiledManager.getParam('Constrain Events to Grid', 'true').toLowerCase() === 'true') {
                 x = Math.floor(x);
                 y = Math.floor(y);
             }
@@ -377,7 +377,7 @@ TiledManager.objectResolvers.vehicle = function (object, map) {
         if (event) {
             let x = object.x / map.tileWidth() - map._offsets.x;
             let y = object.y / map.tileHeight() - map._offsets.y;
-            if (pluginParams["Constrain Events to Grid"].toLowerCase() === "true") {
+            if (TiledManager.getParam('Constrain Events to Grid', 'true').toLowerCase() === 'true') {
                 x = Math.floor(x);
                 y = Math.floor(y);
             }
@@ -417,4 +417,13 @@ TiledManager.pluginCommand = function(command, args) {
     if(_pluginCommands.hasOwnProperty(command)) {
         _pluginCommands[command].call(this, args);
     }
+}
+
+/* PARAMETER CHECKS */
+
+TiledManager.getParam = (param, defaultValue = '') => {
+    if (Object.prototype.hasOwnProperty.call(pluginParams, param)) {
+        return pluginParams[param];
+    }
+    return defaultValue;
 }

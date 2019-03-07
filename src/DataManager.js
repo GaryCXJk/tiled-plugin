@@ -1,14 +1,21 @@
+const pluginParams = PluginManager.parameters("YED_Tiled");
 DataManager._tempTiledData = null;
 DataManager._tiledLoaded = false;
 
-let _loadMapData = DataManager.loadMapData;
+const loadMapData = DataManager.loadMapData;
+
+
 DataManager.loadMapData = function (mapId) {
-    _loadMapData.call(this, mapId);
+    loadMapData.call(this, mapId);
     if (mapId > 0) {
         this.loadTiledMapData(mapId);
     } else {
         this.unloadTiledMapData();
     }
+};
+
+const tilesetLoaded = (idx, tileset) => {
+    DataManager._tempTiledData.tilesets[idx] = Object.assign({}, tileset, {firstgid: DataManager._tempTiledData.tilesets[idx].firstgid});
 };
 
 DataManager.loadTiledMapData = function (mapId) {
@@ -26,27 +33,11 @@ DataManager.loadTiledMapData = function (mapId) {
                 TiledManager.triggerListener(TiledManager, "tiledmapdataprocessed", DataManager._tempTiledData, mapId);
             }
             let tiledLoaded = true;
-            let tilesRequired = 0;
             if(DataManager._tempTiledData && DataManager._tempTiledData.tilesets && DataManager._tempTiledData.tilesets.length > 0) {
                 for(var idx = 0; idx < DataManager._tempTiledData.tilesets.length; idx++) {
                     let tileset = DataManager._tempTiledData.tilesets[idx];
                     if(tileset.source) {
-                        let realTileset = TilesetManager.getTileset(tileset.source);
-                        if(realTileset) {
-                            DataManager._tempTiledData.tilesets[idx] = Object.assign({}, realTileset, {firstgid: DataManager._tempTiledData.tilesets[idx].firstgid});
-                        } else {
-                            tiledLoaded = false;
-                            tilesRequired++;
-                            +function(idx) {
-                                TilesetManager.loadTileset(tileset.source, function(returnTileset) {
-                                    DataManager._tempTiledData.tilesets[idx] = Object.assign({}, returnTileset, {firstgid: DataManager._tempTiledData.tilesets[idx].firstgid});
-                                    tilesRequired--;
-                                    if(tilesRequired === 0) {
-                                        DataManager._tiledLoaded = true;
-                                    }
-                                });
-                            }(idx);
-                        }
+                        TilesetManager.loadTileset(tileset.source, tilesetLoaded.bind(null, idx));
                     }
                 }
             }
@@ -62,12 +53,17 @@ DataManager.loadTiledMapData = function (mapId) {
 DataManager.unloadTiledMapData = function () {
     DataManager._tempTiledData = null;
     DataManager._tiledLoaded = false;
+
+    if ((pluginParams["Unload tilesets on map switch"] || 'true').toLowerCase() === "true") {
+        TilesetManager.unload();
+    }
 };
 
 let _isMapLoaded = DataManager.isMapLoaded;
 DataManager.isMapLoaded = function() {
     let defaultLoaded = _isMapLoaded.call(this);
     let tiledLoaded = DataManager._tiledLoaded;
+    let tilesetLoaded = TilesetManager.isReady();
 
-    return defaultLoaded && tiledLoaded;
+    return defaultLoaded && tiledLoaded && tilesetLoaded;
 };

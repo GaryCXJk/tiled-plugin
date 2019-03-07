@@ -29,6 +29,12 @@
  * @desc The folder where tilesets are located.
  * Default: tilesets/
  * @default tilesets/
+ * 
+ * @param Unload tilesets on map switch
+ * @parent Files
+ * @desc When switching maps and this is enabled, tilesets will always be unloaded from memory.
+ * @default true
+ * @type boolean
  *
  * @param Z Indexes
  *

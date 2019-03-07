@@ -1,3 +1,4 @@
+import { getProperty } from './helpers'
 import TiledTileLayer from "./TiledTileLayer";
 
 let pluginParams = PluginManager.parameters("YED_Tiled");
@@ -60,6 +61,8 @@ export class TiledTilemap extends ShaderTilemap {
 
         for (let layerData of this.tiledData.layers) {
             let zIndex = 0;
+            const properties = layerData.properties;
+
             if (layerData.type === "imagelayer") {
                 this._createImageLayer(layerData, id);
                 id++;
@@ -70,26 +73,31 @@ export class TiledTilemap extends ShaderTilemap {
                 continue;
             }
 
-            if (!!layerData.properties && !!layerData.properties.zIndex) {
-                zIndex = parseInt(layerData.properties.zIndex);
+            if (!!getProperty(properties, 'zIndex')) {
+                zIndex = parseInt(getProperty(layerData.properties, zIndex));
             }
 
-            if (!!layerData.properties && !!layerData.properties.collision) {
+            if (!!getProperty(properties, 'collision')) {
                 id++;
                 continue;
             }
 
-            if (!!layerData.properties && !!layerData.properties.toLevel) {
+            if (!!getProperty(properties, 'toLevel')) {
                 id++;
                 continue;
             }
 
-            if (!!layerData.properties && !!layerData.properties.regionId) {
+            if (!!getProperty(properties, 'regionId')) {
                 id++;
                 continue;
             }
 
-            if (!!layerData.properties && layerData.properties.tileFlags === 'hide') {
+            if (getProperty(properties, 'tileFlags') === 'hide') {
+                id++;
+                continue;
+            }
+
+            if (this._isReflectLayer(layerData)) {
                 id++;
                 continue;
             }
@@ -119,6 +127,14 @@ export class TiledTilemap extends ShaderTilemap {
                 this._priorityTiles.push(sprite);
             }
         }
+    }
+
+    _isReflectLayer(layerData) {
+        const properties = layerData.properties;
+        return !!properties && (
+            getProperty(properties, 'reflectionSurface')
+            || getProperty(properties, 'reflectionCast')
+        );
     }
 
     _hackRenderer(renderer) {

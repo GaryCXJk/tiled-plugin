@@ -1,17 +1,17 @@
-let _initMembers = Game_Player.prototype.initMembers;
+const _initMembers = Game_Player.prototype.initMembers;
 Game_Player.prototype.initMembers = function() {
     _initMembers.call(this);
     this._newWaypoint = '';
 }
 
-let _checkEventTriggerHere = Game_Player.prototype.checkEventTriggerHere;
+const _checkEventTriggerHere = Game_Player.prototype.checkEventTriggerHere;
 Game_Player.prototype.checkEventTriggerHere = function (triggers) {
     _checkEventTriggerHere.call(this, triggers);
     this._checkMapLevelChangingHere();
 };
 
 Game_Player.prototype._checkMapLevelChangingHere = function () {
-    let oldLevel = $gameMap.currentMapLevel;
+    const oldLevel = $gameMap.currentMapLevel;
     $gameMap.checkMapLevelChanging(this.x, this.y);
     TiledManager.triggerListener(this, 'levelchanged', {
         oldLevel,
@@ -23,7 +23,7 @@ Game_Player.prototype.isOnHealFloor = function() {
     return $gameMap.isHealFloor(this.x, this.y) && !this.isInAirship();
 };
 
-let _getOnVehicle = Game_Player.prototype.getOnVehicle
+const _getOnVehicle = Game_Player.prototype.getOnVehicle
 Game_Player.prototype.getOnVehicle = function() {
     if(!$gameMap.isTiledMap()) {
         return _getOnVehicle.call(this);

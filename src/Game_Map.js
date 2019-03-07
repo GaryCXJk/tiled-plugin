@@ -1,5 +1,7 @@
+import { getProperty } from './helpers'
+
 // Constants
-let pluginParams = PluginManager.parameters("YED_Tiled");
+const pluginParams = PluginManager.parameters("YED_Tiled");
 
 Object.defineProperty(Game_Map.prototype, 'tiledData', {
     get: function () {
@@ -44,6 +46,7 @@ Game_Map.prototype.setup = function (mapId) {
     this._mapLevelChangeLayers = [];
     this._positionHeightChangeLayers = [];
     this._tileFlagsLayers = [];
+    this._reflection = [];
     this._currentMapLevel = 0;
     this.currentMapLevel = 0;
     this._waypoints = {};
@@ -96,6 +99,7 @@ Game_Map.prototype._setupTiled = function () {
     this._setupRegion();
     this._setupMapLevelChange();
     this._setupTileFlags();
+    this._setupReflection();
     this._setupTiledEvents();
 };
 
@@ -854,6 +858,93 @@ Game_Map.prototype._combineFlags = function (source, target) {
     }
     return source;
 }
+
+Game_Map.prototype._setupReflection = function () {
+    for (const layerData of this.tiledData.layers) {
+        const properties = layerData.properties
+        if (layerData.type !== "objectgroup") {
+            continue;
+        }
+
+        if (!properties) {
+            continue;
+        }
+
+        const reflectionCast = getProperty(properties, 'reflectionCast')
+        const reflectionMask = getProperty(properties, 'reflectionMask')
+        const reflectionOpacity = getProperty(properties, 'reflectionOpacity') || 255
+        const reflectionOffset = getProperty(properties, 'reflectionOffset') || 0
+
+        if (reflectionCast === null) {
+            continue;
+        }
+
+        for (const obj of layerData.objects) {
+            const rect = {
+                x: obj.x,
+                y: obj.y,
+                width: obj.width,
+                height: obj.height,
+            };
+
+            this._reflection.push({
+                rect,
+                reflectionCast,
+                reflectionMask,
+                reflectionOpacity,
+                reflectionOffset,
+            });
+        }
+    }
+};
+
+Game_Map.prototype.isOnReflection = function (character) {
+    const mapX = character._realX * this.tileWidth();
+    const mapY = character._realY * this.tileHeight();
+
+    if (!this.isTiledMap()) {
+        return false;
+    }
+
+    if (this._reflection.length === 0) {
+        return false;
+    }
+
+    for (const reflection of this._reflection) {
+        const rect = reflection.rect;
+        const inX = mapX >= rect.x && mapX <= rect.x + rect.width;
+        const inY = mapY >= rect.y && mapY <= rect.y + rect.height;
+
+        if (inX && inY) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+Game_Map.prototype.getReflections = function (character) {
+    const mapX = character._realX;
+    const mapY = character._realY;
+
+    const result = [];
+
+    for (const reflection of this._reflection) {
+        const rect = reflection.rect;
+        const xBegin = rect.x / this.tileWidth();
+        const yBegin = rect.y / this.tileHeight();
+        const xEnd = (rect.x + rect.width) / this.tileWidth() - 1;
+        const yEnd = (rect.y + rect.height) / this.tileHeight() - 1;
+        const inX = mapX >= xBegin && mapX <= xEnd;
+        const inY = mapY >= yBegin && mapY <= yEnd;
+
+        if (inX && inY) {
+            result.push(reflection);
+        }
+    }
+
+    return result;
+};
 
 Game_Map.prototype._setupTiledEvents = function () {
     for (let layerData of this.tiledData.layers) {

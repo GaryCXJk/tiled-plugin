@@ -10,22 +10,25 @@ var getBanner = function() {
 	
 	help = help.replace('/*', ' *').replace('*/', '*');
 	header = header.replace('@help', '@help\n' + help);
+    console.log('a');
 	return header;
 }
 
 module.exports = {
     entry: './src/index.js',
+    devtool: 'eval',
     output: {
         path: path.resolve(__dirname, 'build'),
         filename: 'YED_Tiled.js'
     },
+    mode: 'none',
     module: {
-        loaders: [
+        rules: [
             {
                 test: /\.js$/,
                 loader: 'babel-loader',
                 query: {
-                    presets: ['env']
+                    presets: ['@babel/preset-env']
                 }
             }
         ]
@@ -38,7 +41,7 @@ module.exports = {
 			watchFileRegex: ['./src/header.js', './doc/help.js']
 		}),
 		new webpack.BannerPlugin({
-			banner: getBanner(),
+			banner: getBanner,
 			raw: true
 		})
 	],
