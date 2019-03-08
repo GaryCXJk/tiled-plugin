@@ -10,13 +10,13 @@ Game_CharacterBase.prototype.screenZ = function () {
     return parseInt(pluginParams["Z - Player"]);
 };
 
-let _distancePerFrame = Game_CharacterBase.prototype.distancePerFrame;
+const _distancePerFrame = Game_CharacterBase.prototype.distancePerFrame;
 Game_CharacterBase.prototype.distancePerFrame = function () {
-    let distance = _distancePerFrame.call(this);
+    const distance = _distancePerFrame.call(this);
     return distance * (48 / Math.min($gameMap.tileWidth(), $gameMap.tileHeight()));
 };
 
-let _refreshBushDepth = Game_CharacterBase.prototype.refreshBushDepth;
+const _refreshBushDepth = Game_CharacterBase.prototype.refreshBushDepth;
 Game_CharacterBase.prototype.refreshBushDepth = function() {
     if(!this.hasOwnProperty('_bushDepth')) {
         this._bushDepth = 0;
