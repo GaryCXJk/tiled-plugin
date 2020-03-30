@@ -10,7 +10,7 @@ uniform vec4 shadowColor;
 uniform sampler2D uSamplers[%count%];
 uniform vec2 uSamplerSize[%count%];
 uniform vec2 pointScale;
-uniform float alpha;
+uniform float uAlpha;
 
 void main(void){
    float margin = 0.5 / vSize;
@@ -20,7 +20,7 @@ void main(void){
    float textureId = vTextureId;
    vec4 color;
    %forloop%
-   gl_FragColor = color * alpha;
+   gl_FragColor = color * uAlpha;
 }
 `
 
@@ -55,13 +55,13 @@ varying float vTextureId;
 uniform vec4 shadowColor;
 uniform sampler2D uSamplers[%count%];
 uniform vec2 uSamplerSize[%count%];
-uniform float alpha;
+uniform float uAlpha;
 void main(void){
    vec2 textureCoord = clamp(vTextureCoord, vFrame.xy, vFrame.zw);
    float textureId = floor(vTextureId + 0.5);
    vec4 color;
    %forloop%
-   gl_FragColor = color * alpha;
+   gl_FragColor = color * uAlpha;
 }
 `;
 
@@ -107,10 +107,15 @@ export default class TiledTileShader extends PIXI.tilemap.TilemapShader {
         }
         this.maxTextures = maxTextures;
         this.stride = this.vertSize * 4;
+        this.useSquare = useSquare;
         PIXI.tilemap.shaderGenerator.fillSamplers(this, this.maxTextures);
     }
 
     createVao(renderer, vb) {
+        return this.useSquare ? this.createVaoSquare(renderer, vb) : this.createVaoRect(renderer, vb);
+    }
+
+    createVaoRect(renderer, vb) {
         var gl = renderer.gl;
         return renderer.createVao()
             .addIndex(this.indexBuffer)
@@ -119,5 +124,16 @@ export default class TiledTileShader extends PIXI.tilemap.TilemapShader {
             .addAttribute(vb, this.attributes.aFrame, gl.FLOAT, false, this.stride, 4 * 4)
             .addAttribute(vb, this.attributes.aAnim, gl.FLOAT, false, this.stride, this.anim * 4)
             .addAttribute(vb, this.attributes.aTextureId, gl.FLOAT, false, this.stride, this.textureId * 4);
+    }
+
+    createVaoSquare(renderer, vb) {
+        var gl = renderer.gl;
+        return renderer.createVao()
+            .addIndex(this.indexBuffer)
+            .addAttribute(vb, this.attributes.aVertexPosition, gl.FLOAT, false, this.stride, 0)
+            .addAttribute(vb, this.attributes.aTextureCoord, gl.FLOAT, false, this.stride, 2 * 4)
+            .addAttribute(vb, this.attributes.aSize, gl.FLOAT, false, this.stride, 4 * 4)
+            .addAttribute(vb, this.attributes.aAnim, gl.FLOAT, false, this.stride, 5 * 4)
+            .addAttribute(vb, this.attributes.aTextureId, gl.FLOAT, false, this.stride, 7 * 4);
     }
 }

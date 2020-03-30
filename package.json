@@ -2,10 +2,11 @@
   "name": "tiled-plugin",
   "version": "0.1.0",
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.3",
-    "babel-loader": "^8.0.5",
-    "babel-preset-env": "^1.7.0",
+    "@babel/core": "^7.7.2",
+    "@babel/plugin-proposal-object-rest-spread": "^7.9.0",
+    "@babel/plugin-transform-arrow-functions": "^7.8.3",
+    "@babel/preset-env": "^7.7.1",
+    "babel-loader": "^8.0.6",
     "filewatcher-webpack-plugin": "^1.2.0",
     "growl": "^1.10.5",
     "html-pdf": "^2.2.0",
@@ -13,8 +14,9 @@
     "markdown-toc": "^1.2.0",
     "remarkable": "^1.7.1",
     "through": "^2.3.8",
-    "webpack": "^4.29.0",
-    "webpack-dev-server": "^3.1.14"
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10",
+    "webpack-dev-server": "^3.9.0"
   },
   "scripts": {
     "webpack": "webpack",

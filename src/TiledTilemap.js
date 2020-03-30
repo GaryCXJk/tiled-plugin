@@ -700,8 +700,8 @@ export class TiledTilemap extends ShaderTilemap {
 			offsets.x*= $gameMap.tileWidth();
             offsets.y*= $gameMap.tileHeight();
             let display = {
-                x: $gameMap.displayX() * $gameMap.tileWidth() - offsets.x,
-                y: $gameMap.displayY() * $gameMap.tileHeight() - offsets.y
+                x: $gameMap.displayX() * $gameMap.tileWidth(),
+                y: $gameMap.displayY() * $gameMap.tileHeight()
             }
             if(!!layer.origin) {
                 let autoX = props.autoXFunction ? props.autoXFunction(props.autoX, props.autoY || 0) : 0;

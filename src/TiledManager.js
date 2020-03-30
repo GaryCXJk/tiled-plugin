@@ -169,6 +169,8 @@ TiledManager.processTiledData = function(parentLayer = false) {
         // Trigger listener that a layer has been processed.
         TiledManager.triggerListener(TiledManager, "tiledlayerdataprocessed", layer, parentLayer);
     }
+    $gameMap.initializeMapProperties();
+    $gameMap.initializeInfiniteMap();
 }
 
 TiledManager.extractTileId = function(layerData, i) {
@@ -370,7 +372,7 @@ TiledManager.objectResolvers.eventId = function (object, map) {
  * @param {*} map 
  */
 TiledManager.objectResolvers.vehicle = function (object, map) {
-    if (object.properties && object.properties.eventId) {
+    if (object.properties && object.properties.vehicle) {
         let event = map.vehicle(object.properties.vehicle);
         map._vehicles.push(object.properties.vehicle);
 
@@ -387,7 +389,7 @@ TiledManager.objectResolvers.vehicle = function (object, map) {
             }
 
             event.loadSystemSettings();
-            event.setLocation(this.mapId(), x, y);
+            event.setLocation(map.mapId(), x, y);
 
             event._tiledProperties = object.properties;
             return true;

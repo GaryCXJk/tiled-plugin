@@ -48,9 +48,6 @@ Game_Map.prototype.setup = function (mapId) {
     this.currentMapLevel = 0;
     this._waypoints = {};
     this._layerProperties = [];
-    this._autoSize = false;
-    this._autoSizeBorder = 0;
-    this._offsets = { x: 0, y: 0 };
     this._camera = {
         focus: "player",
         data: null
@@ -87,8 +84,6 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
-    this._initializeMapProperties();
-    this._initializeInfiniteMap();
     this._setLayerProperties();
     this._initializeMapLevel(0);
 
@@ -99,7 +94,10 @@ Game_Map.prototype._setupTiled = function () {
     this._setupTiledEvents();
 };
 
-Game_Map.prototype._initializeMapProperties = function() {
+Game_Map.prototype.initializeMapProperties = function() {
+    this._autoSize = false;
+    this._autoSizeBorder = 0;
+    this._offsets = { x: 0, y: 0 };
     let autoSize = false;
     let border = 0;
     if(this.tiledData.properties) {
@@ -137,7 +135,11 @@ Game_Map.prototype.offsets = function(x = false, y = false) {
     }
 }
 
-Game_Map.prototype._initializeInfiniteMap = function() {
+/*
+ * I've decided to not use the following functions anymore, as they caused problems when reloading after
+ * battle.
+ */
+Game_Map.prototype.initializeInfiniteMap = function() {
     if(!this.tiledData.infinite) {
         return;
     }
@@ -233,6 +235,8 @@ Game_Map.prototype._setMapSize = function() {
     this._offsets.y = minY;
     this.tiledData.width = maxX - minX;
     this.tiledData.height = maxY - minY;
+    this._offsets.width = this.tiledData.width;
+    this._offsets.height = this.tiledData.height;
 }
 
 Game_Map.prototype._cropInfiniteMap = function(layer, offset, limit, forward = true, vertical = false) {

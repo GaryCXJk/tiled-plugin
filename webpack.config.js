@@ -14,18 +14,19 @@ var getBanner = function() {
 }
 
 module.exports = {
+    mode: 'development',
     entry: './src/index.js',
     output: {
         path: path.resolve(__dirname, 'build'),
         filename: 'YED_Tiled.js'
     },
     module: {
-        loaders: [
+        rules: [
             {
                 test: /\.js$/,
                 loader: 'babel-loader',
                 query: {
-                    presets: ['env']
+                    presets: ['@babel/env']
                 }
             }
         ]
