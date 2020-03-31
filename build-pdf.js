@@ -3,6 +3,8 @@ var toc = require('markdown-toc');
 var fs = require('fs');
 var pdf = require('html-pdf');
 
+var Remarkable = require('remarkable').Remarkable;
+
 var html = fs.readFileSync('./doc/src/index.html', 'utf8');
 var mdDocs = ["introduction.md", "usage.md", "properties.md", "devhooks.md", "changes.md"];
 var bookPath = "doc/help.pdf";
@@ -14,7 +16,6 @@ mdDocs.forEach(function(file) {
 	str+= fs.readFileSync('doc/src/' + file);
 });
 
-var Remarkable = require('remarkable');
 var rm = new Remarkable();
 
 html = html.replace(/{{\s*input\s*}}/, rm.render(str));

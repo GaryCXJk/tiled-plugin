@@ -1,5 +1,8 @@
 # Changes
 
+**v2.03 (2020-03-31)**
+* Fix: There seemed to be a WebGL issue
+
 **v2.02 (2018-05-03)**
 Author: Frilly Wumpus
 
