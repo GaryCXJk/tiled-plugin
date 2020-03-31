@@ -1,10 +1,10 @@
-import TiledTileLayer from "./TiledTileLayer";
+import TiledTileLayer from "../TiledTileLayer";
 
 let pluginParams = PluginManager.parameters("YED_Tiled");
 /**
  * This class handles the tilemap
  */
-export class TiledTilemap extends ShaderTilemap {
+export default class TiledTilemap extends ShaderTilemap {
     initialize(tiledData) {
         this.indexedBitmaps = [];
         this._tiledData = {};
@@ -575,6 +575,12 @@ export class TiledTilemap extends ShaderTilemap {
     /* Parallax map stuff */
 
     _createImageLayer(layerData, id) {
+        if (!!!!layerData.properties && !!!!layerData.properties.ignoreLoading) {
+            return;
+        }
+
+        let props = $gameMap.getLayerProperties(id);
+
         let zIndex = 0;
         let repeatX = false;
         let repeatY = false;
@@ -589,8 +595,6 @@ export class TiledTilemap extends ShaderTilemap {
 		let viewportHeight = 0;
 		let viewportDeltaX = 0;
 		let viewportDeltaY = 0;
-
-        let props = $gameMap.getLayerProperties(id);
 
         if(!!layerData.properties) {
             if(!!layerData.properties.ignoreLoading) {

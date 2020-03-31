@@ -4,7 +4,6 @@ import "./ImageManager";
 import "./TiledManager";
 import "./Sprite_TiledPriorityTile";
 import "./AlphaFilter";
-import { TiledTilemap } from "./TiledTilemap";
 import "./TiledTileRenderer";
 import "./Game_Map";
 import "./Game_Screen";

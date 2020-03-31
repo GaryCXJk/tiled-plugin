@@ -1,4 +1,4 @@
-import { TiledTilemap } from "./TiledTilemap";
+import TiledTilemap from "./TiledTilemap";
 
 let _initialize = Spriteset_Battle.prototype.initialize
 Spriteset_Battle.prototype.initialize = function() {

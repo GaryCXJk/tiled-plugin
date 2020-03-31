@@ -31,6 +31,7 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
 let _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
     this._tiledInitialized = false;
+    this.layers = {};
     this._levels = [];
     this._collisionMap = {};
     this._arrowCollisionMap = {};
@@ -84,6 +85,7 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
+    this._setupLayers();
     this._setLayerProperties();
     this._initializeMapLevel(0);
 
@@ -350,6 +352,12 @@ Game_Map.prototype._getLayerTilesets = function(layer, props) {
             props.tilesets.push(tilesetId);
         }
     }
+}
+
+Game_Map.prototype._setupLayers = function() {
+    this.tiledData.layers.forEach((layer) => {
+        console.log(layer);
+    });
 }
 
 Game_Map.prototype._initializeMapLevel = function (id) {

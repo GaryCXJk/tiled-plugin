@@ -1573,6 +1573,7 @@ var _setup = Game_Map.prototype.setup;
 
 Game_Map.prototype.setup = function (mapId) {
   this._tiledInitialized = false;
+  this.layers = {};
   this._levels = [];
   this._collisionMap = {};
   this._arrowCollisionMap = {};
@@ -1632,6 +1633,8 @@ Game_Map.prototype.isTiledMap = function () {
 };
 
 Game_Map.prototype._setupTiled = function () {
+  this._setupLayers();
+
   this._setLayerProperties();
 
   this._initializeMapLevel(0);
@@ -1975,6 +1978,12 @@ Game_Map.prototype._getLayerTilesets = function (layer, props) {
   } finally {
     _iterator.f();
   }
+};
+
+Game_Map.prototype._setupLayers = function () {
+  this.tiledData.layers.forEach(function (layer) {
+    console.log(layer);
+  });
 };
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -4000,7 +4009,7 @@ Sprite_TiledPriorityTile.prototype.updateVisibility = function () {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _TiledTilemap__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./TiledTilemap */ "./src/TiledTilemap.js");
+/* harmony import */ var _TiledTilemap__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./TiledTilemap */ "./src/TiledTilemap/index.js");
 function _createForOfIteratorHelper(o) { if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (o = _unsupportedIterableToArray(o))) { var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var it, normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(n); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -4025,7 +4034,7 @@ Spriteset_Map.prototype.createTilemap = function () {
     return;
   }
 
-  this._tilemap = new _TiledTilemap__WEBPACK_IMPORTED_MODULE_0__["TiledTilemap"]($gameMap.tiledData);
+  this._tilemap = new _TiledTilemap__WEBPACK_IMPORTED_MODULE_0__["default"]($gameMap.tiledData);
   this._tilemap.horizontalWrap = $gameMap.isLoopHorizontal();
   this._tilemap.verticalWrap = $gameMap.isLoopVertical();
   this.loadTileset();
@@ -4866,17 +4875,17 @@ var TiledTileShader = /*#__PURE__*/function (_PIXI$tilemap$Tilemap) {
 
 /***/ }),
 
-/***/ "./src/TiledTilemap.js":
-/*!*****************************!*\
-  !*** ./src/TiledTilemap.js ***!
-  \*****************************/
-/*! exports provided: TiledTilemap */
+/***/ "./src/TiledTilemap/index.js":
+/*!***********************************!*\
+  !*** ./src/TiledTilemap/index.js ***!
+  \***********************************/
+/*! exports provided: default */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "TiledTilemap", function() { return TiledTilemap; });
-/* harmony import */ var _TiledTileLayer__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./TiledTileLayer */ "./src/TiledTileLayer.js");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return TiledTilemap; });
+/* harmony import */ var _TiledTileLayer__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../TiledTileLayer */ "./src/TiledTileLayer.js");
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
 function _createForOfIteratorHelper(o) { if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (o = _unsupportedIterableToArray(o))) { var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var it, normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
@@ -5740,6 +5749,11 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
   }, {
     key: "_createImageLayer",
     value: function _createImageLayer(layerData, id) {
+      if (!!!!layerData.properties && !!!!layerData.properties.ignoreLoading) {
+        return;
+      }
+
+      var props = $gameMap.getLayerProperties(id);
       var zIndex = 0;
       var repeatX = false;
       var repeatY = false;
@@ -5754,7 +5768,6 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
       var viewportHeight = 0;
       var viewportDeltaX = 0;
       var viewportDeltaY = 0;
-      var props = $gameMap.getLayerProperties(id);
 
       if (!!layerData.properties) {
         if (!!layerData.properties.ignoreLoading) {
@@ -5944,6 +5957,8 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
   return TiledTilemap;
 }(ShaderTilemap);
 
+
+
 /***/ }),
 
 /***/ "./src/TilesetManager.js":
@@ -6031,26 +6046,24 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _Sprite_TiledPriorityTile__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_Sprite_TiledPriorityTile__WEBPACK_IMPORTED_MODULE_4__);
 /* harmony import */ var _AlphaFilter__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./AlphaFilter */ "./src/AlphaFilter.js");
 /* harmony import */ var _AlphaFilter__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(_AlphaFilter__WEBPACK_IMPORTED_MODULE_5__);
-/* harmony import */ var _TiledTilemap__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./TiledTilemap */ "./src/TiledTilemap.js");
-/* harmony import */ var _TiledTileRenderer__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./TiledTileRenderer */ "./src/TiledTileRenderer.js");
-/* harmony import */ var _Game_Map__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./Game_Map */ "./src/Game_Map.js");
-/* harmony import */ var _Game_Map__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(_Game_Map__WEBPACK_IMPORTED_MODULE_8__);
-/* harmony import */ var _Game_Screen__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./Game_Screen */ "./src/Game_Screen.js");
-/* harmony import */ var _Game_Screen__WEBPACK_IMPORTED_MODULE_9___default = /*#__PURE__*/__webpack_require__.n(_Game_Screen__WEBPACK_IMPORTED_MODULE_9__);
-/* harmony import */ var _Game_CharacterBase__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./Game_CharacterBase */ "./src/Game_CharacterBase.js");
-/* harmony import */ var _Game_CharacterBase__WEBPACK_IMPORTED_MODULE_10___default = /*#__PURE__*/__webpack_require__.n(_Game_CharacterBase__WEBPACK_IMPORTED_MODULE_10__);
-/* harmony import */ var _Game_Actor__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./Game_Actor */ "./src/Game_Actor.js");
-/* harmony import */ var _Game_Actor__WEBPACK_IMPORTED_MODULE_11___default = /*#__PURE__*/__webpack_require__.n(_Game_Actor__WEBPACK_IMPORTED_MODULE_11__);
-/* harmony import */ var _Game_Player__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./Game_Player */ "./src/Game_Player.js");
-/* harmony import */ var _Game_Player__WEBPACK_IMPORTED_MODULE_12___default = /*#__PURE__*/__webpack_require__.n(_Game_Player__WEBPACK_IMPORTED_MODULE_12__);
-/* harmony import */ var _Game_Vehicle__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./Game_Vehicle */ "./src/Game_Vehicle.js");
-/* harmony import */ var _Game_Vehicle__WEBPACK_IMPORTED_MODULE_13___default = /*#__PURE__*/__webpack_require__.n(_Game_Vehicle__WEBPACK_IMPORTED_MODULE_13__);
-/* harmony import */ var _Game_Interpreter__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./Game_Interpreter */ "./src/Game_Interpreter.js");
-/* harmony import */ var _Game_Interpreter__WEBPACK_IMPORTED_MODULE_14___default = /*#__PURE__*/__webpack_require__.n(_Game_Interpreter__WEBPACK_IMPORTED_MODULE_14__);
-/* harmony import */ var _Sprite_Character__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./Sprite_Character */ "./src/Sprite_Character.js");
-/* harmony import */ var _Sprite_Character__WEBPACK_IMPORTED_MODULE_15___default = /*#__PURE__*/__webpack_require__.n(_Sprite_Character__WEBPACK_IMPORTED_MODULE_15__);
-/* harmony import */ var _Spriteset_Map__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./Spriteset_Map */ "./src/Spriteset_Map.js");
-
+/* harmony import */ var _TiledTileRenderer__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./TiledTileRenderer */ "./src/TiledTileRenderer.js");
+/* harmony import */ var _Game_Map__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./Game_Map */ "./src/Game_Map.js");
+/* harmony import */ var _Game_Map__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(_Game_Map__WEBPACK_IMPORTED_MODULE_7__);
+/* harmony import */ var _Game_Screen__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./Game_Screen */ "./src/Game_Screen.js");
+/* harmony import */ var _Game_Screen__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(_Game_Screen__WEBPACK_IMPORTED_MODULE_8__);
+/* harmony import */ var _Game_CharacterBase__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./Game_CharacterBase */ "./src/Game_CharacterBase.js");
+/* harmony import */ var _Game_CharacterBase__WEBPACK_IMPORTED_MODULE_9___default = /*#__PURE__*/__webpack_require__.n(_Game_CharacterBase__WEBPACK_IMPORTED_MODULE_9__);
+/* harmony import */ var _Game_Actor__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./Game_Actor */ "./src/Game_Actor.js");
+/* harmony import */ var _Game_Actor__WEBPACK_IMPORTED_MODULE_10___default = /*#__PURE__*/__webpack_require__.n(_Game_Actor__WEBPACK_IMPORTED_MODULE_10__);
+/* harmony import */ var _Game_Player__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./Game_Player */ "./src/Game_Player.js");
+/* harmony import */ var _Game_Player__WEBPACK_IMPORTED_MODULE_11___default = /*#__PURE__*/__webpack_require__.n(_Game_Player__WEBPACK_IMPORTED_MODULE_11__);
+/* harmony import */ var _Game_Vehicle__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./Game_Vehicle */ "./src/Game_Vehicle.js");
+/* harmony import */ var _Game_Vehicle__WEBPACK_IMPORTED_MODULE_12___default = /*#__PURE__*/__webpack_require__.n(_Game_Vehicle__WEBPACK_IMPORTED_MODULE_12__);
+/* harmony import */ var _Game_Interpreter__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./Game_Interpreter */ "./src/Game_Interpreter.js");
+/* harmony import */ var _Game_Interpreter__WEBPACK_IMPORTED_MODULE_13___default = /*#__PURE__*/__webpack_require__.n(_Game_Interpreter__WEBPACK_IMPORTED_MODULE_13__);
+/* harmony import */ var _Sprite_Character__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./Sprite_Character */ "./src/Sprite_Character.js");
+/* harmony import */ var _Sprite_Character__WEBPACK_IMPORTED_MODULE_14___default = /*#__PURE__*/__webpack_require__.n(_Sprite_Character__WEBPACK_IMPORTED_MODULE_14__);
+/* harmony import */ var _Spriteset_Map__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./Spriteset_Map */ "./src/Spriteset_Map.js");
 
 
 
