@@ -12,7 +12,7 @@ Spriteset_Map.prototype.createTilemap = function () {
         _createTilemap.call(this);
         return;
     }
-    this._tilemap = new TiledTilemap($gameMap.tiledData);
+    this._tilemap = new TiledTilemap($gameMap.tiledData, $gameMap.layers);
     this._tilemap.horizontalWrap = $gameMap.isLoopHorizontal();
     this._tilemap.verticalWrap = $gameMap.isLoopVertical();
     this.loadTileset();

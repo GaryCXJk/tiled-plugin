@@ -1,3 +1,6 @@
+import TiledMapImage from './TiledMap/TiledMapImage';
+import TiledMapLayer from './TiledMap/TiledMapLayer';
+
 // Constants
 let pluginParams = PluginManager.parameters("YED_Tiled");
 
@@ -28,10 +31,16 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
     configurable: true
 });
 
+Object.defineProperty(Game_Map.prototype, 'layers', {
+    get: function() {
+        return this._layers;
+    },
+});
+
 let _setup = Game_Map.prototype.setup;
 Game_Map.prototype.setup = function (mapId) {
     this._tiledInitialized = false;
-    this.layers = {};
+    this._layers = [];
     this._levels = [];
     this._collisionMap = {};
     this._arrowCollisionMap = {};
@@ -356,8 +365,21 @@ Game_Map.prototype._getLayerTilesets = function(layer, props) {
 
 Game_Map.prototype._setupLayers = function() {
     this.tiledData.layers.forEach((layer) => {
+        let data = null;
         console.log(layer);
+        switch (layer.type) {
+            case 'imagelayer':
+                data = new TiledMapImage(layer);
+                break;
+            case 'tilelayer':
+                data = new TiledMapLayer(layer, this);
+                break;
+            default:
+                break;
+        }
+        this._layers.push(data);
     });
+    console.log(this._layers, this.tiledData);
 }
 
 Game_Map.prototype._initializeMapLevel = function (id) {

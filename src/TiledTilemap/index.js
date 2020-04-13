@@ -5,7 +5,7 @@ let pluginParams = PluginManager.parameters("YED_Tiled");
  * This class handles the tilemap
  */
 export default class TiledTilemap extends ShaderTilemap {
-    initialize(tiledData) {
+    initialize(tiledData, layers) {
         this.indexedBitmaps = [];
         this._tiledData = {};
         this._layers = [];
@@ -14,6 +14,7 @@ export default class TiledTilemap extends ShaderTilemap {
         this._priorityTiles = [];
         this._priorityTilesCount = 0;
         this.tiledData = tiledData;
+        this.layers = layers;
         super.initialize();
         this.setupTiled();
     }
@@ -61,7 +62,7 @@ export default class TiledTilemap extends ShaderTilemap {
         for (let layerData of this.tiledData.layers) {
             let zIndex = 0;
             if (layerData.type === "imagelayer") {
-                this._createImageLayer(layerData, id);
+                this._createImageLayer(id);
                 id++;
                 continue;
             }
@@ -574,75 +575,21 @@ export default class TiledTilemap extends ShaderTilemap {
 
     /* Parallax map stuff */
 
-    _createImageLayer(layerData, id) {
-        if (!!!!layerData.properties && !!!!layerData.properties.ignoreLoading) {
+    _createImageLayer(id) {
+        const imageLayer = this.layers[id];
+
+        if (imageLayer.ignoreLoading) {
             return;
         }
 
-        let props = $gameMap.getLayerProperties(id);
+        const props = $gameMap.getLayerProperties(id);
 
-        let zIndex = 0;
-        let repeatX = false;
-        let repeatY = false;
-        let deltaX = 1;
-        let deltaY = 1;
-        let autoX = 0;
-        let autoY = 0;
-        let hue = 0;
-		let viewportX = 0;
-		let viewportY = 0;
-		let viewportWidth = 0;
-		let viewportHeight = 0;
-		let viewportDeltaX = 0;
-		let viewportDeltaY = 0;
-
-        if(!!layerData.properties) {
-            if(!!layerData.properties.ignoreLoading) {
-                return;
-            }
-            if (!!layerData.properties.zIndex) {
-                zIndex = parseInt(layerData.properties.zIndex);
-            }
-            if(layerData.properties.hasOwnProperty('repeatX')) {
-                repeatX = !!layerData.properties.repeatX;
-            }
-            if(layerData.properties.hasOwnProperty('repeatY')) {
-                repeatY = !!layerData.properties.repeatY;
-            }
-            if(layerData.properties.hasOwnProperty('deltaX')) {
-                deltaX = layerData.properties.deltaX;
-            }
-            if(layerData.properties.hasOwnProperty('deltaY')) {
-                deltaY = layerData.properties.deltaY;
-            }
-            if(!!layerData.properties.autoX) {
-                autoX = layerData.properties.autoX;
-            }
-            if(!!layerData.properties.autoY) {
-                autoY = layerData.properties.autoY;
-            }
-            if(!!layerData.properties.hue) {
-                hue = parseInt(layerData.properties.hue)
-            }
-			if(layerData.properties.hasOwnProperty('viewportX')) {
-				viewportX = layerData.properties.viewportX;
-			}
-			if(layerData.properties.hasOwnProperty('viewportY')) {
-				viewportY = layerData.properties.viewportY;
-			}
-			if(layerData.properties.hasOwnProperty('viewportWidth')) {
-				viewportWidth = layerData.properties.viewportWidth;
-			}
-			if(layerData.properties.hasOwnProperty('viewportHeight')) {
-				viewportHeight = layerData.properties.viewportHeight;
-			}
-			if(layerData.properties.hasOwnProperty('viewportDeltaX')) {
-				viewportDeltaX = layerData.properties.viewportDeltaX;
-			}
-			if(layerData.properties.hasOwnProperty('viewportDeltaY')) {
-				viewportDeltaY = layerData.properties.viewportDeltaY;
-			}
-        }
+        const repeatX = imageLayer.repeatX;
+        const repeatY = imageLayer.repeatY;
+        const autoX = imageLayer.autoX;
+        const autoY = imageLayer.autoY;
+		let viewportWidth = imageLayer.viewportWidth;
+		let viewportHeight = imageLayer.viewportHeight;
 
         let layer;
 
@@ -654,19 +601,19 @@ export default class TiledTilemap extends ShaderTilemap {
         }
         layer.layerId = id;
         layer.spriteId = Sprite._counter++;
-        layer.alpha = layerData.opacity;
-        layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+        layer.alpha = imageLayer.opacity;
+        layer.bitmap = ImageManager.loadParserParallax(imageLayer.image, imageLayer.hue);
         layer.bitmap.addLoadListener(() => {
             props.imageWidth = layer.bitmap.width;
             props.imageHeight = layer.bitmap.height;
         })
-        layer.baseX = layerData.x + (layerData.offsetx || 0);
-        layer.baseY = layerData.y + (layerData.offsety || 0);
-        layer.z = layer.zIndex = zIndex;
+        layer.baseX = imageLayer.baseX;
+        layer.baseY = imageLayer.baseY;
+        layer.z = imageLayer.z;
         layer.repeatX = repeatX;
         layer.repeatY = repeatY;
-        layer.deltaX = deltaX;
-        layer.deltaY = deltaY;
+        layer.deltaX = imageLayer.deltaX;
+        layer.deltaY = imageLayer.deltaY;
         layer.stepAutoX = autoX;
         layer.stepAutoY = autoY;
         layer.autoX = 0;
@@ -674,15 +621,16 @@ export default class TiledTilemap extends ShaderTilemap {
 		if(viewportWidth || viewportHeight) {
 			viewportWidth = viewportWidth || Graphics.width;
 			viewportHeight = viewportHeight || Graphics.height;
-			let layerMask = new PIXI.Graphics();
-			layerMask.baseX = viewportX;
-			layerMask.baseY = viewportY;
-			layerMask.baseWidth = viewportWidth;
-			layerMask.baseHeight = viewportHeight;
-			layerMask.deltaX = viewportDeltaX;
-			layerMask.deltaY = viewportDeltaY;
+			const layerMask = new PIXI.Graphics();
+			layerMask.baseX = imageLayer.viewportX;
+			layerMask.baseY = imageLayer.viewportY;
+			layerMask.baseWidth = imageLayer.viewportWidth;
+			layerMask.baseHeight = imageLayer.viewportHeight;
+			layerMask.deltaX = imageLayer.viewportDeltaX;
+			layerMask.deltaY = imageLayer.viewportDeltaY;
 			layer.mask = layerMask;
-			layer.hasViewport = true;
+            layer.hasViewport = true;
+            console.log(layer, layerMask, imageLayer, this.tiledData.layers[id]);
 		}
         this._imageLayers.push(layer);
         this.addChild(layer);

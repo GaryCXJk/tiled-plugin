@@ -1519,9 +1519,13 @@ Game_Interpreter.prototype.pluginCommand = function (command, args) {
 /*!*************************!*\
   !*** ./src/Game_Map.js ***!
   \*************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
+/*! no exports provided */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _TiledMap_TiledMapImage__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./TiledMap/TiledMapImage */ "./src/TiledMap/TiledMapImage.js");
+/* harmony import */ var _TiledMap_TiledMapLayer__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./TiledMap/TiledMapLayer */ "./src/TiledMap/TiledMapLayer.js");
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -1540,7 +1544,9 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-// Constants
+
+ // Constants
+
 var pluginParams = PluginManager.parameters("YED_Tiled");
 Object.defineProperty(Game_Map.prototype, 'tiledData', {
   get: function get() {
@@ -1569,11 +1575,16 @@ Object.defineProperty(Game_Map.prototype, 'currentMapLevel', {
   },
   configurable: true
 });
+Object.defineProperty(Game_Map.prototype, 'layers', {
+  get: function get() {
+    return this._layers;
+  }
+});
 var _setup = Game_Map.prototype.setup;
 
 Game_Map.prototype.setup = function (mapId) {
   this._tiledInitialized = false;
-  this.layers = {};
+  this._layers = [];
   this._levels = [];
   this._collisionMap = {};
   this._arrowCollisionMap = {};
@@ -1981,9 +1992,28 @@ Game_Map.prototype._getLayerTilesets = function (layer, props) {
 };
 
 Game_Map.prototype._setupLayers = function () {
+  var _this = this;
+
   this.tiledData.layers.forEach(function (layer) {
+    var data = null;
     console.log(layer);
+
+    switch (layer.type) {
+      case 'imagelayer':
+        data = new _TiledMap_TiledMapImage__WEBPACK_IMPORTED_MODULE_0__["default"](layer);
+        break;
+
+      case 'tilelayer':
+        data = new _TiledMap_TiledMapLayer__WEBPACK_IMPORTED_MODULE_1__["default"](layer, _this);
+        break;
+
+      default:
+        break;
+    }
+
+    _this._layers.push(data);
   });
+  console.log(this._layers, this.tiledData);
 };
 
 Game_Map.prototype._initializeMapLevel = function (id) {
@@ -3339,7 +3369,7 @@ Game_Map.prototype.getAllLayerProperties = function () {
 };
 
 Game_Map.prototype.getTileProperties = function (x, y) {
-  var _this = this;
+  var _this2 = this;
 
   var layer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : -1;
   var ignoreHidden = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
@@ -3363,7 +3393,7 @@ Game_Map.prototype.getTileProperties = function (x, y) {
   this.tiledData.layers.forEach(function (layerData, i) {
     if (layerData && (layerData.data || layerData.chunks) && layerData.properties) {
       if (!ignoreHidden || !TiledManager.checkLayerHidden(layerData)) {
-        var props = _this.getTileProperties(x, y, i);
+        var props = _this2.getTileProperties(x, y, i);
 
         if (Object.keys(props).length > 0) {
           tileProperties[i] = props;
@@ -3483,10 +3513,10 @@ Game_Map.prototype.getLayerProperties = function (layerId) {
 };
 
 Game_Map.prototype.setLayerProperties = function () {
-  var _this2 = this;
+  var _this3 = this;
 
   this._layerProperties.forEach(function (props, i) {
-    var layer = _this2.tiledData.layers[i];
+    var layer = _this3.tiledData.layers[i];
 
     if (props.transition) {
       props.isShown = !TiledManager.checkLayerHidden(layer);
@@ -4034,7 +4064,7 @@ Spriteset_Map.prototype.createTilemap = function () {
     return;
   }
 
-  this._tilemap = new _TiledTilemap__WEBPACK_IMPORTED_MODULE_0__["default"]($gameMap.tiledData);
+  this._tilemap = new _TiledTilemap__WEBPACK_IMPORTED_MODULE_0__["default"]($gameMap.tiledData, $gameMap.layers);
   this._tilemap.horizontalWrap = $gameMap.isLoopHorizontal();
   this._tilemap.verticalWrap = $gameMap.isLoopVertical();
   this.loadTileset();
@@ -4617,6 +4647,103 @@ TiledManager.pluginCommand = function (command, args) {
 
 /***/ }),
 
+/***/ "./src/TiledMap/TiledMapImage.js":
+/*!***************************************!*\
+  !*** ./src/TiledMap/TiledMapImage.js ***!
+  \***************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return TiledMapImage; });
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var TiledMapImage = /*#__PURE__*/function () {
+  function TiledMapImage(layer) {
+    var _this = this;
+
+    _classCallCheck(this, TiledMapImage);
+
+    this.name = layer.name;
+    this.x = layer.x;
+    this.y = layer.y;
+    this.z = 0;
+    this.offsetX = layer.offsetx || 0;
+    this.offsetY = layer.offsety || 0;
+    this.image = layer.image;
+    this.opacity = layer.opacity;
+    this.autoX = 0;
+    this.autoY = 0;
+    this.deltaX = 1;
+    this.deltaY = 1;
+    this.repeatX = false;
+    this.repeatY = false;
+    this.viewportX = 0;
+    this.viewportY = 0;
+    this.viewportWidth = 0;
+    this.viewportHeight = 0;
+    this.viewportDeltaX = 0;
+    this.viewportDeltaY = 0;
+    this.ignoreLoading = false;
+
+    if (layer.properties) {
+      ['autoX', 'autoY', 'deltaX', 'deltaY', 'repeatX', 'repeatY', 'viewportX', 'viewportY', 'viewportWidth', 'viewportHeight', 'viewportDeltaX', 'viewportDeltaY', 'hue', 'ignoreLoading'].forEach(function (prop) {
+        if (typeof layer.properties[prop] !== 'undefined') {
+          _this[prop] = layer.properties[prop];
+        }
+      });
+      this.z = layer.z || layer.properties.zIndex || this.z;
+    }
+
+    this.visible = layer.visible;
+  }
+
+  _createClass(TiledMapImage, [{
+    key: "baseX",
+    get: function get() {
+      return this.x + this.offsetX;
+    }
+  }, {
+    key: "baseY",
+    get: function get() {
+      return this.y + this.offsetY;
+    }
+  }]);
+
+  return TiledMapImage;
+}();
+
+
+
+/***/ }),
+
+/***/ "./src/TiledMap/TiledMapLayer.js":
+/*!***************************************!*\
+  !*** ./src/TiledMap/TiledMapLayer.js ***!
+  \***************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return TiledMapLayer; });
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var TiledMapLayer = function TiledMapLayer(layer, gameMap) {
+  _classCallCheck(this, TiledMapLayer);
+
+  this.name = layer.name;
+};
+
+
+
+/***/ }),
+
 /***/ "./src/TiledTileLayer.js":
 /*!*******************************!*\
   !*** ./src/TiledTileLayer.js ***!
@@ -4937,7 +5064,7 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
 
   _createClass(TiledTilemap, [{
     key: "initialize",
-    value: function initialize(tiledData) {
+    value: function initialize(tiledData, layers) {
       this.indexedBitmaps = [];
       this._tiledData = {};
       this._layers = [];
@@ -4946,6 +5073,7 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
       this._priorityTiles = [];
       this._priorityTilesCount = 0;
       this.tiledData = tiledData;
+      this.layers = layers;
 
       _get(_getPrototypeOf(TiledTilemap.prototype), "initialize", this).call(this);
 
@@ -4996,7 +5124,7 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
           var zIndex = 0;
 
           if (layerData.type === "imagelayer") {
-            this._createImageLayer(layerData, id);
+            this._createImageLayer(id);
 
             id++;
             continue;
@@ -5748,89 +5876,20 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
 
   }, {
     key: "_createImageLayer",
-    value: function _createImageLayer(layerData, id) {
-      if (!!!!layerData.properties && !!!!layerData.properties.ignoreLoading) {
+    value: function _createImageLayer(id) {
+      var imageLayer = this.layers[id];
+
+      if (imageLayer.ignoreLoading) {
         return;
       }
 
       var props = $gameMap.getLayerProperties(id);
-      var zIndex = 0;
-      var repeatX = false;
-      var repeatY = false;
-      var deltaX = 1;
-      var deltaY = 1;
-      var autoX = 0;
-      var autoY = 0;
-      var hue = 0;
-      var viewportX = 0;
-      var viewportY = 0;
-      var viewportWidth = 0;
-      var viewportHeight = 0;
-      var viewportDeltaX = 0;
-      var viewportDeltaY = 0;
-
-      if (!!layerData.properties) {
-        if (!!layerData.properties.ignoreLoading) {
-          return;
-        }
-
-        if (!!layerData.properties.zIndex) {
-          zIndex = parseInt(layerData.properties.zIndex);
-        }
-
-        if (layerData.properties.hasOwnProperty('repeatX')) {
-          repeatX = !!layerData.properties.repeatX;
-        }
-
-        if (layerData.properties.hasOwnProperty('repeatY')) {
-          repeatY = !!layerData.properties.repeatY;
-        }
-
-        if (layerData.properties.hasOwnProperty('deltaX')) {
-          deltaX = layerData.properties.deltaX;
-        }
-
-        if (layerData.properties.hasOwnProperty('deltaY')) {
-          deltaY = layerData.properties.deltaY;
-        }
-
-        if (!!layerData.properties.autoX) {
-          autoX = layerData.properties.autoX;
-        }
-
-        if (!!layerData.properties.autoY) {
-          autoY = layerData.properties.autoY;
-        }
-
-        if (!!layerData.properties.hue) {
-          hue = parseInt(layerData.properties.hue);
-        }
-
-        if (layerData.properties.hasOwnProperty('viewportX')) {
-          viewportX = layerData.properties.viewportX;
-        }
-
-        if (layerData.properties.hasOwnProperty('viewportY')) {
-          viewportY = layerData.properties.viewportY;
-        }
-
-        if (layerData.properties.hasOwnProperty('viewportWidth')) {
-          viewportWidth = layerData.properties.viewportWidth;
-        }
-
-        if (layerData.properties.hasOwnProperty('viewportHeight')) {
-          viewportHeight = layerData.properties.viewportHeight;
-        }
-
-        if (layerData.properties.hasOwnProperty('viewportDeltaX')) {
-          viewportDeltaX = layerData.properties.viewportDeltaX;
-        }
-
-        if (layerData.properties.hasOwnProperty('viewportDeltaY')) {
-          viewportDeltaY = layerData.properties.viewportDeltaY;
-        }
-      }
-
+      var repeatX = imageLayer.repeatX;
+      var repeatY = imageLayer.repeatY;
+      var autoX = imageLayer.autoX;
+      var autoY = imageLayer.autoY;
+      var viewportWidth = imageLayer.viewportWidth;
+      var viewportHeight = imageLayer.viewportHeight;
       var layer;
 
       if (!repeatX && !repeatY && !autoX && !autoY) {
@@ -5842,19 +5901,19 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
 
       layer.layerId = id;
       layer.spriteId = Sprite._counter++;
-      layer.alpha = layerData.opacity;
-      layer.bitmap = ImageManager.loadParserParallax(layerData.image, hue);
+      layer.alpha = imageLayer.opacity;
+      layer.bitmap = ImageManager.loadParserParallax(imageLayer.image, imageLayer.hue);
       layer.bitmap.addLoadListener(function () {
         props.imageWidth = layer.bitmap.width;
         props.imageHeight = layer.bitmap.height;
       });
-      layer.baseX = layerData.x + (layerData.offsetx || 0);
-      layer.baseY = layerData.y + (layerData.offsety || 0);
-      layer.z = layer.zIndex = zIndex;
+      layer.baseX = imageLayer.baseX;
+      layer.baseY = imageLayer.baseY;
+      layer.z = imageLayer.z;
       layer.repeatX = repeatX;
       layer.repeatY = repeatY;
-      layer.deltaX = deltaX;
-      layer.deltaY = deltaY;
+      layer.deltaX = imageLayer.deltaX;
+      layer.deltaY = imageLayer.deltaY;
       layer.stepAutoX = autoX;
       layer.stepAutoY = autoY;
       layer.autoX = 0;
@@ -5864,14 +5923,15 @@ var TiledTilemap = /*#__PURE__*/function (_ShaderTilemap) {
         viewportWidth = viewportWidth || Graphics.width;
         viewportHeight = viewportHeight || Graphics.height;
         var layerMask = new PIXI.Graphics();
-        layerMask.baseX = viewportX;
-        layerMask.baseY = viewportY;
-        layerMask.baseWidth = viewportWidth;
-        layerMask.baseHeight = viewportHeight;
-        layerMask.deltaX = viewportDeltaX;
-        layerMask.deltaY = viewportDeltaY;
+        layerMask.baseX = imageLayer.viewportX;
+        layerMask.baseY = imageLayer.viewportY;
+        layerMask.baseWidth = imageLayer.viewportWidth;
+        layerMask.baseHeight = imageLayer.viewportHeight;
+        layerMask.deltaX = imageLayer.viewportDeltaX;
+        layerMask.deltaY = imageLayer.viewportDeltaY;
         layer.mask = layerMask;
         layer.hasViewport = true;
+        console.log(layer, layerMask, imageLayer, this.tiledData.layers[id]);
       }
 
       this._imageLayers.push(layer);
@@ -6048,7 +6108,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _AlphaFilter__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(_AlphaFilter__WEBPACK_IMPORTED_MODULE_5__);
 /* harmony import */ var _TiledTileRenderer__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./TiledTileRenderer */ "./src/TiledTileRenderer.js");
 /* harmony import */ var _Game_Map__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./Game_Map */ "./src/Game_Map.js");
-/* harmony import */ var _Game_Map__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(_Game_Map__WEBPACK_IMPORTED_MODULE_7__);
 /* harmony import */ var _Game_Screen__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./Game_Screen */ "./src/Game_Screen.js");
 /* harmony import */ var _Game_Screen__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(_Game_Screen__WEBPACK_IMPORTED_MODULE_8__);
 /* harmony import */ var _Game_CharacterBase__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./Game_CharacterBase */ "./src/Game_CharacterBase.js");

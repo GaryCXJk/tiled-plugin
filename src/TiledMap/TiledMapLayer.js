@@ -1,5 +1,5 @@
 export default class TiledMapLayer {
-    constructor() {
-        
+    constructor(layer, gameMap) {
+        this.name = layer.name;
     }
 }
