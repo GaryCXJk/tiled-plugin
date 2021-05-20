@@ -13,7 +13,7 @@
     "diff": "^3.5.0",
     "filewatcher-webpack-plugin": "^1.2.0",
     "growl": "^1.10.5",
-    "html-pdf": "^2.2.0",
+    "html-pdf": "^3.0.1",
     "markdown-pdf": "^10.0.0",
     "markdown-toc": "^1.2.0",
     "remarkable": "^2.0.0",
